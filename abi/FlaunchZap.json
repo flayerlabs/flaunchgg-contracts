@@ -188,6 +188,11 @@
           ]
         },
         {
+          "name": "_trustedFeeSigner",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
           "name": "_premineSwapHookData",
           "type": "bytes",
           "internalType": "bytes"
@@ -358,6 +363,11 @@
               "internalType": "bytes"
             }
           ]
+        },
+        {
+          "name": "_trustedFeeSigner",
+          "type": "address",
+          "internalType": "address"
         },
         {
           "name": "_premineSwapHookData",

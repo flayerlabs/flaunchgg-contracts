@@ -15,6 +15,7 @@ import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
 import {BidWall} from '@flaunch/bidwall/BidWall.sol';
 import {AnyBidWall} from '@flaunch/bidwall/AnyBidWall.sol';
 import {BuyBackAndBurnFlay} from '@flaunch/subscribers/BuyBackAndBurnFlay.sol';
+import {CustomFeeManagerRegistry} from '@flaunch/treasury/managers/partners/CustomFeeManagerRegistry.sol';
 import {FairLaunch} from '@flaunch/hooks/FairLaunch.sol';
 import {FastFlaunchZap} from '@flaunch/zaps/FastFlaunchZap.sol';
 import {FeeDistributor} from '@flaunch/hooks/FeeDistributor.sol';
@@ -89,6 +90,7 @@ contract FlaunchTest is Deployers {
     TreasuryActionManager internal actionManager;
     TreasuryManagerFactory internal treasuryManagerFactory;
     IndexerSubscriber internal indexer;
+    CustomFeeManagerRegistry internal customFeeManagerRegistry;
 
     WhitelistFairLaunch internal whitelistFairLaunch;
     WhitelistPoolSwap internal whitelistPoolSwap;
@@ -209,8 +211,11 @@ contract FlaunchTest is Deployers {
         anyFlaunch.initialize(anyPositionManager, address(memecoinTreasuryImplementation));
         anyPositionManager.setFlaunch(address(anyFlaunch));
 
+        // Deploy our CustomFeeManagerRegistry
+        customFeeManagerRegistry = new CustomFeeManagerRegistry();
+
         // Deploy our StaticFeeCalculator
-        StaticFeeCalculator feeCalculator = new StaticFeeCalculator();
+        StaticFeeCalculator feeCalculator = new StaticFeeCalculator(address(flETH), address(customFeeManagerRegistry));
         positionManager.setFeeCalculator(feeCalculator);
 
         fairLaunch.grantRole(ProtocolRoles.POSITION_MANAGER, address(positionManager));

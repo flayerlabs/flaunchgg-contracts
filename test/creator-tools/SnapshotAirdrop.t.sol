@@ -494,8 +494,9 @@ contract SnapshotAirdropTest is FlaunchTest {
     }
 
     /// proxyClaim()
-    function test_proxyClaim_RevertsForNonApprovedCaller(address _caller) external {
+    function test_proxyClaim_RevertsForNonApprovedCaller() external {
         address user = makeAddr("user");
+        address caller = makeAddr("caller");
 
         // Give the user some memecoin tokens to make them eligible
         _giveMemecoinToUser(user, 10e18);
@@ -505,7 +506,7 @@ contract SnapshotAirdropTest is FlaunchTest {
         vm.warp(block.timestamp + 1 days);
         _transferOutUserBalance(user);
         
-        vm.prank(_caller);
+        vm.prank(caller);
         vm.expectRevert(IBaseAirdrop.NotApprovedAirdropCreator.selector);
         snapshotAirdrop.proxyClaim(user, memecoin, airdropIndex);
     }
@@ -701,7 +702,7 @@ contract SnapshotAirdropTest is FlaunchTest {
             flaunchAt: 0,
             initialPriceParams: abi.encode(''),
             feeCalculatorParams: abi.encode(1_000)
-        }), bytes(''));
+        }), address(0), bytes(''));
 
         IERC20(_memecoin).approve(address(snapshotAirdrop), airdropAmount);
     }

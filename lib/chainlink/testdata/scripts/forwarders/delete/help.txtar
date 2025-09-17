@@ -1,9 +1,0 @@
-exec chainlink forwarders delete --help
-cmp stdout out.txt
-
--- out.txt --
-NAME:
-   chainlink forwarders delete - Delete a forwarder address
-
-USAGE:
-   chainlink forwarders delete [arguments...]

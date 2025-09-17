@@ -635,6 +635,7 @@ contract WhitelistFairLaunchTest is FlaunchTest {
                 initialPriceParams: abi.encode(5000e6),
                 feeCalculatorParams: abi.encode(1000)
             }),
+            _trustedFeeSigner: address(0),
             _premineSwapHookData: bytes(''),
             _whitelistParams: FlaunchZap.WhitelistParams({
                 merkleRoot: _root,

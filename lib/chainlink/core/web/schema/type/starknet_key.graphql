@@ -1,7 +1,0 @@
-type StarkNetKey {
-	id: ID!
-}
-
-type StarkNetKeysPayload {
-	results: [StarkNetKey!]!
-}

@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
-import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
-import {toBalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
 import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {CustomRevert} from '@uniswap/v4-core/src/libraries/CustomRevert.sol';
+import {Hooks, IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
+import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
+import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
 
 import {PositionManager} from '@flaunch/PositionManager.sol';
 import {TrustedSignerFeeCalculator} from '@flaunch/fees/TrustedSignerFeeCalculator.sol';
+import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
-
 
 contract TrustedSignerFeeCalculatorTest is FlaunchTest {
 
@@ -37,12 +39,22 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
     function setUp() public {
         _deployPlatform();
 
-        feeCalculator = new TrustedSignerFeeCalculator(address(flETH), address(positionManager));
+        feeCalculator = new TrustedSignerFeeCalculator(address(flETH), address(customFeeManagerRegistry));
+        feeCalculator.grantRole(ProtocolRoles.POSITION_MANAGER, address(positionManager));
 
         positionManager.setFairLaunchFeeCalculator(feeCalculator);
 
         // The signer we will be using
         (signer, signerPrivateKey) = makeAddrAndKey('signer');
+
+        // Provide our user with enough FLETH to make our swaps. We also need ETH as our premine wraps
+        // it into flETH internally.
+        deal(address(this), 1000e27 ether);
+        deal(address(flETH), address(this), 1000e27 ether);
+        flETH.approve(address(poolSwap), type(uint256).max);
+
+        // {PoolManager} must have some initial flETH balance to serve `take()` requests in our hook
+        deal(address(flETH), address(poolManager), 1000e27 ether);
     }
 
     /**
@@ -126,10 +138,11 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
 
         // Define our hookData that we will use for our swaps
         uint deadline = 1748952660;
-        bytes memory signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        bytes memory signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
         bytes memory hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
@@ -139,7 +152,8 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         (secondPoolKey, memecoin2) = _flaunchToken(true, 0, 0);
 
         // Confirm that we cannot swap against a PoolKey that doesn't have the trusted signer
-        vm.expectRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.InvalidSigner.selector, signer));
+        // This now fails with InvalidPoolKey because the signature is for a different pool
+        _expectWrappedErrorRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.InvalidPoolKey.selector));
         _trackSwap(secondPoolKey, 3 ether, hookData, TX_ORIGIN);
     }
 
@@ -185,11 +199,12 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         feeCalculator.addTrustedSigner(signer);
 
         uint deadline = 1748952660;
-        bytes memory signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        bytes memory signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
 
         bytes memory hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
@@ -208,11 +223,12 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         feeCalculator.addTrustedSigner(signer);
 
         uint deadline = 1748952660;
-        bytes memory signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        bytes memory signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
 
         bytes memory hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
@@ -222,7 +238,7 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         _trackSwap(poolKey, 3 ether, hookData, TX_ORIGIN);
 
         // Try and make a second swap with the same signature, which should revert
-        vm.expectRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.SignatureAlreadyUsed.selector));
+        _expectWrappedErrorRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.SignatureAlreadyUsed.selector));
         _trackSwap(poolKey, 3 ether, hookData, TX_ORIGIN);
     }
 
@@ -236,17 +252,18 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         feeCalculator.addTrustedSigner(signer);
 
         uint deadline = block.timestamp - 1;
-        bytes memory signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        bytes memory signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
 
         bytes memory hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
         );
 
-        vm.expectRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.DeadlineExpired.selector, deadline));
+        _expectWrappedErrorRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.DeadlineExpired.selector, deadline));
         _trackSwap(poolKey, 3 ether, hookData, TX_ORIGIN);
     }
 
@@ -258,17 +275,18 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         (poolKey, memecoin) = _flaunchToken(true, 0, 0);
 
         uint deadline = 1748952660;
-        bytes memory signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        bytes memory signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
 
         bytes memory hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
         );
 
-        vm.expectRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.InvalidSigner.selector, signer));
+        _expectWrappedErrorRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.InvalidSigner.selector, signer));
         _trackSwap(poolKey, 3 ether, hookData, TX_ORIGIN);
     }
 
@@ -322,11 +340,12 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         feeCalculator.addTrustedSigner(signer);
 
         uint deadline = 1748952660;
-        bytes memory signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        bytes memory signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
 
         bytes memory hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
@@ -340,10 +359,11 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
 
         // Generate new signature for second transaction
         deadline = 1748952661;
-        signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
         hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
@@ -357,17 +377,18 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
 
         // Generate new signature for third transaction
         deadline = 1748952662;
-        signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
         hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
         );
 
         // Third transaction: 1 ether (should fail, would exceed wallet cap of 5 ether: 5 + 1 = 6 > 5)
-        vm.expectRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 1 ether, 0));
+        _expectWrappedErrorRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 1 ether, 0));
         _trackSwap(poolKey, 1 ether, hookData, TX_ORIGIN);
         
         // Verify the wallet purchased amount remains unchanged after failed transaction
@@ -384,18 +405,19 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         feeCalculator.addTrustedSigner(signer);
 
         uint deadline = 1748952660;
-        bytes memory signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        bytes memory signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
 
         bytes memory hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
         );
 
         // Transaction with 3 ether (should fail, exceeds tx cap of 2 ether)
-        vm.expectRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 3 ether, 2 ether));
+        _expectWrappedErrorRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 3 ether, 2 ether));
         _trackSwap(poolKey, 3 ether, hookData, TX_ORIGIN);
     }
 
@@ -409,11 +431,12 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         feeCalculator.addTrustedSigner(signer);
 
         uint deadline = 1748952660;
-        bytes memory signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        bytes memory signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
 
         bytes memory hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
@@ -427,10 +450,11 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
 
         // Second transaction should also succeed
         deadline = 1748952661;
-        signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
         hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
@@ -451,11 +475,12 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         feeCalculator.addTrustedSigner(signer);
 
         uint deadline = 1748952660;
-        bytes memory signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        bytes memory signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
 
         bytes memory hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
@@ -475,11 +500,12 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         feeCalculator.addTrustedSigner(signer);
 
         uint deadline = 1748952660;
-        bytes memory signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        bytes memory signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
 
         bytes memory hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
@@ -490,17 +516,18 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
 
         // Generate new signature for second transaction
         deadline = 1748952661;
-        signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
         hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
         );
 
         // Second transaction: 4 ether (should fail, exceeds tx cap of 3 ether)
-        vm.expectRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 4 ether, 3 ether));
+        _expectWrappedErrorRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 4 ether, 3 ether));
         _trackSwap(poolKey, 4 ether, hookData, TX_ORIGIN);
     }
 
@@ -514,11 +541,12 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         feeCalculator.addTrustedSigner(signer);
 
         uint deadline = 1748952660;
-        bytes memory signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        bytes memory signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
 
         bytes memory hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
@@ -532,10 +560,11 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         
         // Generate new signature for different wallet
         deadline = 1748952661;
-        signature = _generateSignature(address(2), deadline, signerPrivateKey);
+        signature = _generateSignature(address(2), poolKey.toId(), deadline, signerPrivateKey);
         hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
@@ -549,17 +578,18 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         
         // Generate new signature for first wallet
         deadline = 1748952662;
-        signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
         hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
         );
 
         // First wallet: 3 ether (should fail, would exceed wallet cap of 5 ether)
-        vm.expectRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 3 ether, 2 ether));
+        _expectWrappedErrorRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 3 ether, 2 ether));
         _trackSwap(poolKey, 3 ether, hookData, TX_ORIGIN);
         
         // Verify the first wallet's purchased amount remains unchanged after failed transaction
@@ -580,11 +610,12 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         feeCalculator.setTrustedPoolKeySigner(poolKey, signer);
 
         uint deadline = 1748952660;
-        bytes memory signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        bytes memory signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
 
         bytes memory hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
@@ -595,17 +626,18 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
 
         // Generate new signature for second transaction
         deadline = 1748952661;
-        signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
         hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
         );
 
         // Should fail, exceeds tx cap
-        vm.expectRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 3 ether, 2 ether));
+        _expectWrappedErrorRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 3 ether, 2 ether));
         _trackSwap(poolKey, 3 ether, hookData, TX_ORIGIN);
     }
 
@@ -619,11 +651,12 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         feeCalculator.addTrustedSigner(signer);
 
         uint deadline = 1748952660;
-        bytes memory signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        bytes memory signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
 
         bytes memory hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
@@ -637,17 +670,18 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
 
         // Generate new signature for second transaction
         deadline = 1748952661;
-        signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
         hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
         );
 
         // Second transaction: 3 ether (should fail, would exceed wallet cap of 5 ether: 3 + 3 = 6 > 5)
-        vm.expectRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 3 ether, 2 ether));
+        _expectWrappedErrorRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 3 ether, 2 ether));
         _trackSwap(poolKey, 3 ether, hookData, TX_ORIGIN);
         
         // Verify the wallet purchased amount remains unchanged after failed transaction
@@ -664,11 +698,12 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         feeCalculator.addTrustedSigner(signer);
 
         uint deadline = 1748952660;
-        bytes memory signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        bytes memory signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
 
         bytes memory hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
@@ -687,10 +722,11 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
 
         // Generate new signature for second transaction
         deadline = 1748952661;
-        signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
         hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
@@ -714,17 +750,18 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
 
         // Generate new signature for third transaction
         deadline = 1748952662;
-        signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
         hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
         );
 
         // Third transaction: 1 ether (should fail, would exceed wallet cap: 5 + 1 = 6 > 5)
-        vm.expectRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 1 ether, 0));
+        _expectWrappedErrorRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.TransactionCapExceeded.selector, 1 ether, 0));
         _trackSwap(poolKey, 1 ether, hookData, TX_ORIGIN);
         
         // Verify the wallet purchased amount remains unchanged after failed transaction
@@ -741,11 +778,12 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         feeCalculator.addTrustedSigner(signer);
 
         uint deadline = 1748952660;
-        bytes memory signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        bytes memory signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
 
         bytes memory hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
@@ -762,10 +800,11 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
 
         // Generate new signature for second pool key
         deadline = 1748952661;
-        signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        signature = _generateSignature(TX_ORIGIN, secondPoolKey.toId(), deadline, signerPrivateKey);
         hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(secondPoolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
@@ -783,71 +822,79 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
         assertEq(feeCalculator.walletPurchasedAmount(secondPoolKey.toId(), address(999)), 0);
     }
 
-    function test_canPremineWithTrustedSigner(
-        uint _initialTokenFairLaunch,
-        uint _premineAmount,
-        address _creator,
-        uint _initialPrice
-    ) public {
-        // Ensure that the creator is not a zero address, as this will revert
-        vm.assume(_creator != address(0));
+    /**
+     * Test that signatures are pool-specific and cannot be reused across different pools.
+     */
+    function test_SignaturesArePoolSpecific() public {
+        // Flaunch two memecoins
+        (poolKey, memecoin) = _flaunchToken(true, 0, 0);
+        (secondPoolKey, memecoin2) = _flaunchToken(true, 0, 0);
 
-        // Ensure that our initial token supply is valid (InvalidInitialSupply)
-        vm.assume(_initialTokenFairLaunch <= flaunch.MAX_FAIR_LAUNCH_TOKENS());
-
-        // Ensure that our premine does not exceed the fair launch (PremineExceedsInitialAmount)
-        vm.assume(_premineAmount > 0 && _premineAmount <= _initialTokenFairLaunch);
-
-        // Provide our user with enough FLETH to make the premine swap
-        deal(address(this), 4000e27);
-        // {PoolManager} must have some initial flETH balance to serve `take()` requests in our hook
-        deal(address(flETH), address(poolManager), 1000e27 ether);
-
-        // Case 1: Trusted Signer is set but not enabled for the token
-        flaunchZap.flaunch{value: 1000e27}({
-            _flaunchParams: PositionManager.FlaunchParams({
-                name: 'FlaunchZap',
-                symbol: 'ZAP',
-                tokenUri: 'ipfs://123',
-                initialTokenFairLaunch: _initialTokenFairLaunch,
-                fairLaunchDuration: 30 minutes,
-                premineAmount: _premineAmount,
-                creator: _creator,
-                creatorFeeAllocation: 80_00,
-                flaunchAt: 0,
-                initialPriceParams: abi.encode(_initialPrice),
-                feeCalculatorParams: bytes('')
-            }),
-            _premineSwapHookData: bytes('')
-        });
-
-        // Case 2: Trusted Signer is set and enabled for the token
         feeCalculator.addTrustedSigner(signer);
+
         uint deadline = 1748952660;
-        bytes memory signature = _generateSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        
+        // Generate signature for the first pool
+        bytes memory signature = _generateSignature(TX_ORIGIN, poolKey.toId(), deadline, signerPrivateKey);
         bytes memory hookData = abi.encode(
             address(0),
             TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(poolKey.toId()),
                 deadline: deadline, 
                 signature: signature
             })
         );
 
-        flaunchZap.flaunch{value: 1000e27}({
-            _flaunchParams: PositionManager.FlaunchParams({
-                name: 'FlaunchZap',
-                symbol: 'ZAP',
-                tokenUri: 'ipfs://123',
-                initialTokenFairLaunch: _initialTokenFairLaunch,
-                fairLaunchDuration: 30 minutes,
-                premineAmount: _premineAmount,
-                creator: _creator,
-                creatorFeeAllocation: 80_00,
-                flaunchAt: 0,
-                initialPriceParams: abi.encode(_initialPrice),
-                feeCalculatorParams: abi.encode(true, 0, 0) // Trusted Signer enabled
-            }),
-            _premineSwapHookData: hookData
+        // Should succeed for the first pool
+        _trackSwap(poolKey, 3 ether, hookData, TX_ORIGIN);
+
+        // Should fail for the second pool with the same signature (different poolId)
+        _expectWrappedErrorRevert(abi.encodeWithSelector(TrustedSignerFeeCalculator.InvalidPoolKey.selector));
+        _trackSwap(secondPoolKey, 3 ether, hookData, TX_ORIGIN);
+
+        // Generate signature for the second pool
+        signature = _generateSignature(TX_ORIGIN, secondPoolKey.toId(), deadline, signerPrivateKey);
+        hookData = abi.encode(
+            address(0),
+            TrustedSignerFeeCalculator.SignedMessage({
+                poolId: PoolId.unwrap(secondPoolKey.toId()),
+                deadline: deadline, 
+                signature: signature
+            })
+        );
+
+        // Should succeed for the second pool
+        _trackSwap(secondPoolKey, 3 ether, hookData, TX_ORIGIN);
+    }
+
+    /**
+     * Test that premine works with valid signature when trusted signer is enabled.
+     */
+    function test_CanPremineWithValidSignature() public {
+        // Set a valid deadline
+        uint deadline = 1748952660;
+
+        // Add trusted signer
+        feeCalculator.addTrustedSigner(signer);
+
+        // Generate new signature for our premine transaction
+        deadline = 1748952661;
+        bytes memory signature = _generatePremineSignature(TX_ORIGIN, deadline, signerPrivateKey);
+        bytes memory hookData = abi.encode(
+            address(0),
+            TrustedSignerFeeCalculator.PremineSignedMessage({
+                deadline: deadline, 
+                signature: signature
+            })
+        );
+
+        // Flaunch a memecoin with premine and trusted signer enabled
+        (poolKey, memecoin) = _flaunchTokenWithPremine({
+            _enabled: true,
+            _walletCap: 0,
+            _txCap: 0,
+            _premineAmount: 0.001 ether,
+            _premineSignature: hookData
         });
     }
 
@@ -883,21 +930,15 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
      * @param _hookData The hook data to track the swap with
      */
     function _trackSwap(PoolKey memory _poolKey, uint _amount, bytes memory _hookData, address _origin) internal {
-        // Set the `msg.sender` to the `positionManager` and the `tx.origin` to the `_origin`
-        vm.startPrank(address(positionManager), _origin);
+        vm.startPrank(address(this), _origin);
 
-        feeCalculator.trackSwap(
-            address(1), // We track the swap using `tx.origin`, so this is ignored
+        poolSwap.swap(
             _poolKey,
             IPoolManager.SwapParams({
                 zeroForOne: true,
                 amountSpecified: int(_amount),
                 sqrtPriceLimitX96: uint160(int160(TickMath.minUsableTick(_poolKey.tickSpacing)))
             }),
-            toBalanceDelta(
-                int128(int(_poolKey.currency1 == Currency.wrap(address(flETH)) ? 0 : _amount)),
-                int128(int(_poolKey.currency0 == Currency.wrap(address(flETH)) ? 0 : _amount))
-            ),
             _hookData
         );
 
@@ -905,7 +946,24 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
     }
 
     /**
-     * Generates a signature for a given wallet, deadline and private key.
+     * Generates a signature for a given wallet, poolId, deadline and private key.
+     * 
+     * @param _wallet The wallet to generate a signature for
+     * @param _poolId The pool id that this signature is valid for
+     * @param _deadline The deadline for the signature
+     * @param _privateKey The private key to use to generate the signature
+     *
+     * @return signature_ The encoded signature
+     */
+    function _generateSignature(address _wallet, PoolId _poolId, uint _deadline, uint _privateKey) internal pure returns (bytes memory signature_) {
+        bytes32 hash = keccak256(abi.encodePacked(_wallet, PoolId.unwrap(_poolId), _deadline));
+        bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_privateKey, message); 
+        signature_ = abi.encodePacked(r, s, v);
+    }
+
+    /**
+     * Generates a premine signature for a given wallet, deadline and private key.
      * 
      * @param _wallet The wallet to generate a signature for
      * @param _deadline The deadline for the signature
@@ -913,10 +971,10 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
      *
      * @return signature_ The encoded signature
      */
-    function _generateSignature(address _wallet, uint _deadline, uint _privateKey) internal pure returns (bytes memory signature_) {
+    function _generatePremineSignature(address _wallet, uint _deadline, uint _privateKey) internal pure returns (bytes memory signature_) {
         bytes32 hash = keccak256(abi.encodePacked(_wallet, _deadline));
         bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_privateKey, message); 
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_privateKey, message);
         signature_ = abi.encodePacked(r, s, v);
     }
 
@@ -950,6 +1008,63 @@ contract TrustedSignerFeeCalculatorTest is FlaunchTest {
 
         // Get the PoolKey from the memecoin address
         poolKey_ = positionManager.poolKey(memecoin_);
+
+        // Move forward in time from the flaunch
+        vm.warp(block.timestamp + 1);
+    }
+
+    /**
+     * Flaunches a memecoin with the given fair launch settings and premine amount.
+     * 
+     * @param _enabled Whether the fair launch settings are enabled
+     * @param _walletCap The wallet cap for the fair launch
+     * @param _txCap The transaction cap for the fair launch
+     * @param _premineAmount The amount to premine
+     * @param _premineSignature The signature for the premine
+     *
+     * @return poolKey_ The PoolKey of the memecoin
+     * @return memecoin_ The address of the memecoin
+     */
+    function _flaunchTokenWithPremine(
+        bool _enabled,
+        uint _walletCap,
+        uint _txCap,
+        uint _premineAmount,
+        bytes memory _premineSignature
+    ) internal returns (PoolKey memory poolKey_, address memecoin_) {
+        // Flaunch a memecoin
+        (memecoin_,,) = flaunchZap.flaunch{value: 1000e27}({
+            _flaunchParams: PositionManager.FlaunchParams({
+                name: 'Token Name',
+                symbol: 'TOKEN',
+                tokenUri: 'https://flaunch.gg/',
+                initialTokenFairLaunch: supplyShare(50),
+                fairLaunchDuration: 30 minutes,
+                premineAmount: _premineAmount,
+                creator: address(this),
+                creatorFeeAllocation: 0,
+                flaunchAt: 0,
+                initialPriceParams: abi.encode(''),
+                feeCalculatorParams: abi.encode(_enabled, _walletCap, _txCap)
+            }),
+            _trustedFeeSigner: address(0),
+            _premineSwapHookData: _premineSignature
+        });
+
+        // Get the PoolKey from the memecoin address
+        poolKey_ = positionManager.poolKey(memecoin_);
+    }
+
+    function _expectWrappedErrorRevert(bytes memory _data) internal {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                CustomRevert.WrappedError.selector,
+                address(positionManager),
+                IHooks.afterSwap.selector,
+                _data,
+                abi.encodeWithSelector(Hooks.HookCallFailed.selector)
+            )
+        );
     }
 
 }

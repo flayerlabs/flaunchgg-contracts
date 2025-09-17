@@ -1,85 +1,67 @@
 {
   "abi": [
     {
-      "type": "constructor",
+      "type": "function",
+      "name": "subscribe",
       "inputs": [
         {
-          "name": "_protocolOwner",
-          "type": "address",
-          "internalType": "address"
-        }
-      ],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "cancelOwnershipHandover",
-      "inputs": [],
-      "outputs": [],
-      "stateMutability": "payable"
-    },
-    {
-      "type": "function",
-      "name": "completeOwnershipHandover",
-      "inputs": [
-        {
-          "name": "pendingOwner",
-          "type": "address",
-          "internalType": "address"
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "payable"
-    },
-    {
-      "type": "function",
-      "name": "notifySubscribers",
-      "inputs": [
-        {
-          "name": "_poolId",
-          "type": "bytes32",
-          "internalType": "PoolId"
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
         },
         {
-          "name": "_key",
-          "type": "bytes4",
-          "internalType": "bytes4"
+          "name": "newSubscriber",
+          "type": "address",
+          "internalType": "address"
         },
         {
-          "name": "_data",
+          "name": "data",
           "type": "bytes",
           "internalType": "bytes"
         }
       ],
       "outputs": [],
-      "stateMutability": "nonpayable"
+      "stateMutability": "payable"
     },
     {
       "type": "function",
-      "name": "owner",
-      "inputs": [],
+      "name": "subscriber",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
       "outputs": [
         {
-          "name": "result",
+          "name": "subscriber",
           "type": "address",
-          "internalType": "address"
+          "internalType": "contract ISubscriber"
         }
       ],
       "stateMutability": "view"
     },
     {
       "type": "function",
-      "name": "ownershipHandoverExpiresAt",
+      "name": "unsubscribe",
       "inputs": [
         {
-          "name": "pendingOwner",
-          "type": "address",
-          "internalType": "address"
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
+      "outputs": [],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "unsubscribeGasLimit",
+      "inputs": [],
       "outputs": [
         {
-          "name": "result",
+          "name": "",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -87,116 +69,19 @@
       "stateMutability": "view"
     },
     {
-      "type": "function",
-      "name": "renounceOwnership",
-      "inputs": [],
-      "outputs": [],
-      "stateMutability": "payable"
-    },
-    {
-      "type": "function",
-      "name": "requestOwnershipHandover",
-      "inputs": [],
-      "outputs": [],
-      "stateMutability": "payable"
-    },
-    {
-      "type": "function",
-      "name": "subscribe",
-      "inputs": [
-        {
-          "name": "_subscriber",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "_data",
-          "type": "bytes",
-          "internalType": "bytes"
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "transferOwnership",
-      "inputs": [
-        {
-          "name": "newOwner",
-          "type": "address",
-          "internalType": "address"
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "payable"
-    },
-    {
-      "type": "function",
-      "name": "unsubscribe",
-      "inputs": [
-        {
-          "name": "_subscriber",
-          "type": "address",
-          "internalType": "address"
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "event",
-      "name": "OwnershipHandoverCanceled",
-      "inputs": [
-        {
-          "name": "pendingOwner",
-          "type": "address",
-          "indexed": true,
-          "internalType": "address"
-        }
-      ],
-      "anonymous": false
-    },
-    {
-      "type": "event",
-      "name": "OwnershipHandoverRequested",
-      "inputs": [
-        {
-          "name": "pendingOwner",
-          "type": "address",
-          "indexed": true,
-          "internalType": "address"
-        }
-      ],
-      "anonymous": false
-    },
-    {
-      "type": "event",
-      "name": "OwnershipTransferred",
-      "inputs": [
-        {
-          "name": "oldOwner",
-          "type": "address",
-          "indexed": true,
-          "internalType": "address"
-        },
-        {
-          "name": "newOwner",
-          "type": "address",
-          "indexed": true,
-          "internalType": "address"
-        }
-      ],
-      "anonymous": false
-    },
-    {
       "type": "event",
       "name": "Subscription",
       "inputs": [
         {
-          "name": "_subscriber",
+          "name": "tokenId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "subscriber",
           "type": "address",
-          "indexed": false,
+          "indexed": true,
           "internalType": "address"
         }
       ],
@@ -207,9 +92,15 @@
       "name": "Unsubscription",
       "inputs": [
         {
-          "name": "_subscriber",
+          "name": "tokenId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "subscriber",
           "type": "address",
-          "indexed": false,
+          "indexed": true,
           "internalType": "address"
         }
       ],
@@ -217,28 +108,82 @@
     },
     {
       "type": "error",
-      "name": "AlreadyInitialized",
+      "name": "AlreadySubscribed",
+      "inputs": [
+        {
+          "name": "tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "subscriber",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "BurnNotificationReverted",
+      "inputs": [
+        {
+          "name": "subscriber",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "reason",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "GasLimitTooLow",
       "inputs": []
     },
     {
       "type": "error",
-      "name": "NewOwnerIsZeroAddress",
+      "name": "ModifyLiquidityNotificationReverted",
+      "inputs": [
+        {
+          "name": "subscriber",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "reason",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NoCodeSubscriber",
       "inputs": []
     },
     {
       "type": "error",
-      "name": "NoHandoverRequest",
+      "name": "NotSubscribed",
       "inputs": []
     },
     {
       "type": "error",
       "name": "SubscriptionReverted",
-      "inputs": []
-    },
-    {
-      "type": "error",
-      "name": "Unauthorized",
-      "inputs": []
+      "inputs": [
+        {
+          "name": "subscriber",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "reason",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
     }
   ]
 }

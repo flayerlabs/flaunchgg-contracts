@@ -1,9 +1,0 @@
-exec chainlink admin chpass --help
-cmp stdout out.txt
-
--- out.txt --
-NAME:
-   chainlink admin chpass - Change your API password remotely
-
-USAGE:
-   chainlink admin chpass [arguments...]

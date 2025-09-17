@@ -512,7 +512,7 @@ contract MerkleAirdropTest is FlaunchTest {
             flaunchAt: 0,
             initialPriceParams: abi.encode(''),
             feeCalculatorParams: abi.encode(1_000)
-        }), bytes(''));
+        }), address(0), bytes(''));
         assertEq(memecoin, merkleJSON.token, "Token address mismatch");
 
         IERC20(memecoin).approve(address(merkleAirdrop), merkleJSON.totalTokensToAirdropInWei);

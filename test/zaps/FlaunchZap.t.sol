@@ -11,6 +11,8 @@ import {PositionManager} from '@flaunch/PositionManager.sol';
 import {FairLaunch} from '@flaunch/hooks/FairLaunch.sol';
 import {TreasuryManagerMock} from 'test/mocks/TreasuryManagerMock.sol';
 import {TreasuryManagerFactory} from '@flaunch/treasury/managers/TreasuryManagerFactory.sol';
+import {TrustedSignerFeeCalculator} from '@flaunch/fees/TrustedSignerFeeCalculator.sol';
+import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
 
 import {ClosedPermissions} from '@flaunch/treasury/permissions/Closed.sol';
 import {WhitelistedPermissions} from '@flaunch/treasury/permissions/Whitelisted.sol';
@@ -150,6 +152,7 @@ contract FlaunchZapTest is FlaunchTest {
                 initialPriceParams: abi.encode(params.initialPrice),
                 feeCalculatorParams: abi.encode('')
             }),
+            _trustedFeeSigner: address(0),
             _premineSwapHookData: bytes(''),
             _whitelistParams: FlaunchZap.WhitelistParams({
                 merkleRoot: params.whitelistMerkleRoot,
@@ -283,6 +286,7 @@ contract FlaunchZapTest is FlaunchTest {
                 initialPriceParams: abi.encode(_initialPrice),
                 feeCalculatorParams: abi.encode('')
             }),
+            _trustedFeeSigner: address(0),
             _premineSwapHookData: bytes('')
         });
 
@@ -342,7 +346,7 @@ contract FlaunchZapTest is FlaunchTest {
 
         // We know the address in advance for this test, so we can assert the expected value
         vm.expectEmit();
-        emit TreasuryManagerFactory.ManagerDeployed(0x269C4753e15E47d7CaD8B230ed19cFff21f29D51, managerImplementation);
+        emit TreasuryManagerFactory.ManagerDeployed(0x514dd0Bcaf5994Ef889f482B79d39D18B6E4363F, managerImplementation);
 
         // Deploy and initialize the manager with permissions
         address payable _manager = flaunchZap.deployAndInitializeManager(
@@ -362,5 +366,86 @@ contract FlaunchZapTest is FlaunchTest {
         
         // Verify permissions were set correctly
         assertEq(address(manager.permissions()), permissionsContract);
+    }
+
+    function test_CanFlaunchWithTrustedFeeSigner(
+        address _trustedFeeSigner,
+        bool _depositIntoManager,
+        address _creator,
+        uint _initialPrice
+    ) public {
+        vm.assume(_trustedFeeSigner != address(0));
+        vm.assume(_creator != address(0));
+
+        _setupTestEnvironment();
+
+        // Set the TrustedSignerFeeCalculator to the PositionManager
+        TrustedSignerFeeCalculator feeCalculator = new TrustedSignerFeeCalculator(address(flETH), address(customFeeManagerRegistry) );
+        feeCalculator.grantRole(ProtocolRoles.POSITION_MANAGER, address(positionManager));
+        positionManager.setFairLaunchFeeCalculator(feeCalculator);
+
+        // for feeCalculatorParams
+        TrustedSignerFeeCalculator.FairLaunchSettings memory settings = TrustedSignerFeeCalculator.FairLaunchSettings({
+            enabled: true,
+            walletCap: 10 ether,
+            txCap: 5 ether
+        });
+
+        // for treasuryManagerParams
+        address managerImplementation;
+        if (_depositIntoManager) {
+            // Deploy a mocked manager implementation
+            managerImplementation = address(new TreasuryManagerMock(address(treasuryManagerFactory)));
+            treasuryManagerFactory.approveManager(managerImplementation);
+        }
+
+        (address memecoin_, , address deployedManager_) = flaunchZap.flaunch{value: 1000e27}({
+            _flaunchParams: PositionManager.FlaunchParams({
+                name: 'FlaunchZap',
+                symbol: 'ZAP',
+                tokenUri: 'ipfs://123',
+                initialTokenFairLaunch: 1e18,
+                fairLaunchDuration: 30 minutes,
+                premineAmount: 0,
+                creator: _creator,
+                creatorFeeAllocation: 80_00,
+                flaunchAt: 0,
+                initialPriceParams: abi.encode(_initialPrice),
+                feeCalculatorParams: abi.encode(settings)
+            }),
+            _trustedFeeSigner: _trustedFeeSigner,
+            _premineSwapHookData: bytes(''),
+            _whitelistParams: FlaunchZap.WhitelistParams({
+                merkleRoot: bytes32(''),
+                merkleIPFSHash: '',
+                maxTokens: 0
+            }),
+            _airdropParams: FlaunchZap.AirdropParams({
+                airdropIndex: 0,
+                airdropAmount: 0,
+                airdropEndTime: 0,
+                merkleRoot: bytes32(''),
+                merkleIPFSHash: ''
+            }),
+            _treasuryManagerParams: FlaunchZap.TreasuryManagerParams({
+                manager: managerImplementation,
+                permissions: address(0),
+                initializeData: abi.encode(''),
+                depositData: abi.encode('')
+            })
+        });
+
+        // Check memecoin creator
+        address memecoinCreator = flaunch.ownerOf(1);
+        if (_depositIntoManager) {
+            assertEq(memecoinCreator, deployedManager_);
+        } else {
+            assertEq(memecoinCreator, _creator);
+        }
+
+        // Check trusted fee signer
+        (address signer, bool enabled) = feeCalculator.trustedPoolKeySigner(positionManager.poolKey(memecoin_).toId());
+        assertEq(signer, _trustedFeeSigner);
+        assertTrue(enabled);
     }
 }

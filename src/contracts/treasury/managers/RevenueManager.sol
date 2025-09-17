@@ -197,11 +197,9 @@ contract RevenueManager is TreasuryManager {
      * Allows a protocol owner to make a claim, without any additional {FlaunchToken} logic
      * being passed in the parameters.
      *
-     * @dev This can only be called by the manager owner
-     *
      * @return amount_ The amount of ETH claimed from fees
      */
-    function claim() public returns (uint amount_) {
+    function claim() public virtual returns (uint amount_) {
         // Withdraw fees earned from the held ERC721s, unwrapping into ETH. This will update
         // the `_protocolAvailableClaim` variable in the `receive` function callback.
         treasuryManagerFactory.feeEscrow().withdrawFees(address(this), true);

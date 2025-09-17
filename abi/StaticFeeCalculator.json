@@ -1,11 +1,40 @@
 {
   "abi": [
     {
+      "type": "constructor",
+      "inputs": [
+        {
+          "name": "_nativeToken",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_customFeeManagerRegistry",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "customFeeManagerRegistry",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "contract CustomFeeManagerRegistry"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
       "type": "function",
       "name": "determineSwapFee",
       "inputs": [
         {
-          "name": "",
+          "name": "_poolKey",
           "type": "tuple",
           "internalType": "struct PoolKey",
           "components": [
@@ -37,7 +66,7 @@
           ]
         },
         {
-          "name": "",
+          "name": "_params",
           "type": "tuple",
           "internalType": "struct IPoolManager.SwapParams",
           "components": [
@@ -71,7 +100,20 @@
           "internalType": "uint24"
         }
       ],
-      "stateMutability": "pure"
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "nativeToken",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
     },
     {
       "type": "function",
@@ -96,12 +138,12 @@
       "name": "trackSwap",
       "inputs": [
         {
-          "name": "",
+          "name": "_sender",
           "type": "address",
           "internalType": "address"
         },
         {
-          "name": "",
+          "name": "_poolKey",
           "type": "tuple",
           "internalType": "struct PoolKey",
           "components": [
@@ -133,7 +175,7 @@
           ]
         },
         {
-          "name": "",
+          "name": "_params",
           "type": "tuple",
           "internalType": "struct IPoolManager.SwapParams",
           "components": [
@@ -155,18 +197,18 @@
           ]
         },
         {
-          "name": "",
+          "name": "_delta",
           "type": "int256",
           "internalType": "BalanceDelta"
         },
         {
-          "name": "",
+          "name": "_hookData",
           "type": "bytes",
           "internalType": "bytes"
         }
       ],
       "outputs": [],
-      "stateMutability": "view"
+      "stateMutability": "nonpayable"
     }
   ]
 }

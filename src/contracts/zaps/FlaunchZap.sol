@@ -24,6 +24,7 @@ import {IFLETH} from '@flaunch-interfaces/IFLETH.sol';
 import {IMerkleAirdrop} from '@flaunch-interfaces/IMerkleAirdrop.sol';
 import {ITreasuryManager} from '@flaunch-interfaces/ITreasuryManager.sol';
 import {ITreasuryManagerFactory} from '@flaunch-interfaces/ITreasuryManagerFactory.sol';
+import {ITrustedSignerFeeCalculator} from '@flaunch-interfaces/ITrustedSignerFeeCalculator.sol';
 
 
 /**
@@ -140,6 +141,7 @@ contract FlaunchZap {
      * Flaunches a memecoin without any additional logic.
      *
      * @param _flaunchParams The base flaunch parameters
+     * @param _trustedFeeSigner Optional trusted fee signer for this memecoin
      * @param _premineSwapHookData data passed to the premine swap hook, containing referrer & SignedMessage for trusted signer
      *
      * @return memecoin_ The created ERC20 token address
@@ -148,10 +150,11 @@ contract FlaunchZap {
      */
     function flaunch(
         PositionManager.FlaunchParams memory _flaunchParams,
+        address _trustedFeeSigner,
         bytes calldata _premineSwapHookData
     ) external payable refundsEth returns (address memecoin_, uint ethSpent_, address) {
         // Flaunch our token and capture the memecoin address
-        memecoin_ = _flaunch(_flaunchParams);
+        memecoin_ = _flaunch(_flaunchParams, _trustedFeeSigner);
 
         // Allows the creator to premine their own token
         if (_flaunchParams.premineAmount != 0) {
@@ -170,6 +173,7 @@ contract FlaunchZap {
      * Flaunches a memecoin whilst allowing for any additional logic.
      *
      * @param _flaunchParams The base flaunch parameters
+     * @param _trustedFeeSigner Optional trusted fee signer for this memecoin
      * @param _premineSwapHookData data passed to the premine swap hook, containing referrer & SignedMessage for trusted signer
      * @param _whitelistParams Whitelist related flaunch logic
      * @param _airdropParams Airdrop related flaunch logic
@@ -181,6 +185,7 @@ contract FlaunchZap {
      */
     function flaunch(
         PositionManager.FlaunchParams memory _flaunchParams,
+        address _trustedFeeSigner,
         bytes calldata _premineSwapHookData,
         WhitelistParams calldata _whitelistParams,
         AirdropParams calldata _airdropParams,
@@ -197,7 +202,7 @@ contract FlaunchZap {
         }
 
         // Flaunch our token and capture the memecoin address
-        memecoin_ = _flaunch(_flaunchParams);
+        memecoin_ = _flaunch(_flaunchParams, _trustedFeeSigner);
 
         // Allows the creator to premine their own token
         if (_flaunchParams.premineAmount != 0) {
@@ -265,11 +270,42 @@ contract FlaunchZap {
      * Flaunches our base ERC20.
      *
      * @param _flaunchParams The base flaunch parameters
+     * @param _trustedFeeSigner Custom trusted fee signer for this memecoin
      *
-     * @return address The address of the flaunched ERC20 token
+     * @return memecoin_ The address of the flaunched ERC20 token
      */
-    function _flaunch(PositionManager.FlaunchParams memory _flaunchParams) internal returns (address) {
-        return positionManager.flaunch{value: msg.value}(_flaunchParams);
+    function _flaunch(PositionManager.FlaunchParams memory _flaunchParams, address _trustedFeeSigner) internal returns (address memecoin_) {
+        // if no trusted fee signer is provided, then we flaunch as normal
+        if (_trustedFeeSigner == address(0)) {
+            memecoin_ = positionManager.flaunch{value: msg.value}(_flaunchParams);
+        } else {
+            // `setTrustedPoolKeySigner` can only be called by the current creator
+            // so we make this contract as the creator for now
+
+            // in case we are flaunching into a treasury manager, the creator is already temporarily set as this contract
+            address originalCreator = _flaunchParams.creator;
+            if (originalCreator != address(this)) {
+                _flaunchParams.creator = address(this);
+            }
+
+            // flaunch the token
+            memecoin_ = positionManager.flaunch{value: msg.value}(_flaunchParams);
+            
+            // set the trusted fee signer for this memecoin
+            ITrustedSignerFeeCalculator(address(positionManager.getFeeCalculator(true))).setTrustedPoolKeySigner({
+                _poolKey: positionManager.poolKey(memecoin_),
+                _signer: _trustedFeeSigner
+            });
+
+            // if the creator was not this contract, we need to send the flaunch NFT to the original creator
+            if (originalCreator != address(this)) {
+                flaunchContract.transferFrom(
+                    address(this),
+                    originalCreator,
+                    flaunchContract.tokenId(memecoin_)
+                );
+            }
+        }
     }
 
     /**
