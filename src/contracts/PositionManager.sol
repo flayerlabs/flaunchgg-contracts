@@ -215,16 +215,16 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
     /**
      * Creates a new ERC20 memecoin token creating and an ERC721 that signifies ownership of the
      * flaunched collection. The token is then initialized into a UV4 pool.
-     *
+     * 创建一个新的ERC20 memecoin token并创建一个ERC721，表示拥有flaunched集合的所有权。然后，token被初始化为一个UV4池。
      * The FairLaunch period will start in this call, as soon as the pool is initialized.
-     *
+     * 在调用此函数时，FairLaunch期将开始，因为池在初始化时被启动。
      * @return memecoin_ The created ERC20 token address
      */
     function flaunch(FlaunchParams calldata _params) external payable returns (address memecoin_) {
         uint tokenId;
         address payable memecoinTreasury;
 
-        // Flaunch our token
+        // Flaunch our token 启动我们的token
         (memecoin_, memecoinTreasury, tokenId) = flaunchContract.flaunch(_params);
 
         // Check if our pool currency is flipped
@@ -239,7 +239,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
             hooks: IHooks(address(this))
         });
 
-        // Initialize the {MemecoinTreasury} with `PoolKey`
+        // Initialize the {MemecoinTreasury} with `PoolKey` 初始化MemecoinTreasury与`PoolKey`
         MemecoinTreasury(memecoinTreasury).initialize(payable(address(this)), address(actionManager), nativeToken, _poolKey);
 
         // Set the PoolKey to storage
@@ -247,21 +247,24 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
         PoolId poolId = _poolKey.toId();
 
         // If we have a non-zero creator fee allocation, then we need to update our creator's
-        // fee allocation.
+        // fee allocation. 如果创建者分配了非零的创作者费用，则需要更新创建者的费用分配。
         if (_params.creatorFeeAllocation != 0) {
             creatorFee[poolId] = _params.creatorFeeAllocation;
         }
 
         // Initialize all fee calculators attached to the pool, along with any custom parameters
+        // 初始化所有附加到池的fee计算器，以及任何自定义参数
         _initializeFeeCalculators(poolId, _params.feeCalculatorParams);
 
         // Initialize our memecoin with the sqrtPriceX96
+        // 初始化我们的memecoin与sqrtPriceX96
         int24 initialTick = poolManager.initialize(
             _poolKey,
             initialPrice.getSqrtPriceX96(msg.sender, currencyFlipped, _params.initialPriceParams)
         );
 
         // Check if we have an initial flaunching fee, check that enough ETH has been sent
+        // 检查我们是否有初始的flaunching费用，检查是否发送了足够的ETH
         uint flaunchFee = getFlaunchingFee(_params.initialPriceParams);
 
         emit PoolCreated({
@@ -277,6 +280,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
         /**
          * [PREMINE] If the creator has requested tokens from their initial fair launch
          * allocation, which they can purchase in the same transaction.
+         * 如果创建者请求了他们的初始公平启动分配，他们可以在同一交易中购买这些token。
          */
 
         if (_params.premineAmount != 0) {
@@ -286,16 +290,20 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
         /**
          * [FL] At token creation, x% of token supply is put into a one-sided position.
+         * 在token创建时，x%的token供应被放入一个单边位置。
          */
 
         // We don't currently require any token approval to create a fair launch position, but
         // when the position closes, the {FairLaunch} contract will supply the {PoolManager}
         // with tokens from this contract.
+        // 我们目前不需要任何token批准来创建一个公平启动位置，但是当位置关闭时，{FairLaunch}合同将从这个合同中提供token到{PoolManager}。
         IMemecoin(memecoin_).approve(address(fairLaunch), type(uint).max);
 
         // Regardless of having a fair launch, we need to call `createPosition` as this
         // instantiates our storage struct that is required for when the position is closed
         // and the tokens are moved to a Uniswap V4 liquidity position.
+        // 无论是否有公平启动，我们都需要调用`createPosition`，因为这会实例化我们需要的存储结构，
+        //当位置关闭时，token会被移动到一个Uniswap V4流动性位置。
         fairLaunch.createPosition({
             _poolId: poolId,
             _initialTick: initialTick,
@@ -306,6 +314,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
         /**
          * [SCHEDULE] If we have a timestamp in the future, then we set our schedule mapping.
+         * 如果我们在未来有一个时间戳，那么我们设置我们的schedule映射。
          */
 
         if (_params.flaunchAt > block.timestamp) {
@@ -313,21 +322,26 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
             emit PoolScheduled(poolId, _params.flaunchAt);
         } else {
             // If the `flaunchAt` timestamp has already passed, then use the current timestamp
+            // 如果`flaunchAt`时间戳已经过去，那么使用当前时间戳
             flaunchesAt[poolId] = block.timestamp;
         }
 
         // Refund any additional ETH
+        // 退还任何额外的ETH
         if (flaunchFee != 0) {
             // Check if we have insufficient value provided
+            // 检查我们是否提供了不足的值
             if (msg.value < flaunchFee) {
                 revert InsufficientFlaunchFee(msg.value, flaunchFee);
             }
 
             // Pay the flaunching fee to our fee recipient
+            // 将flaunching费用支付给我们的fee recipient
             SafeTransferLib.safeTransferETH(protocolFeeRecipient, flaunchFee);
         }
 
         // Refund any ETH that was not required
+        // 退还任何不需要的ETH
         if (msg.value > flaunchFee) {
             SafeTransferLib.safeTransferETH(msg.sender, msg.value - flaunchFee);
         }
@@ -335,18 +349,21 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
         // After our contract is initialized, we mark our pool as initialized and emit
         // our state update to notify the UX of current prices, etc. This will include
         // optional liquidity modifications from the Fair Launch logic.
+        // 在我们的合同被初始化后，我们标记我们的池为初始化，并发出我们的状态更新，通知UX当前的价格等。
+        // 这可能包括公平启动逻辑的可选流动性修改。
         _emitPoolStateUpdate(poolId, IHooks.afterInitialize.selector, abi.encode(tokenId, _params));
     }
 
     /**
      * Returns the PoolKey mapped to the token address. If none is set then a zero value
      * will be returned for the fields.
-     *
+     * 返回与token地址关联的PoolKey。如果没有设置，则将为字段返回零值。
      * @dev The easiest way to check for an empty response is `tickSpacing = 0`
-     *
+     * @dev 检查空响应的最简单方法是`tickSpacing = 0`
      * @param _token The address of the ERC20 token
-     *
+     * 
      * @return The corresponding {PoolKey} for the token
+     * 返回对应的poolkey
      */
     function poolKey(address _token) external view returns (PoolKey memory) {
         return _poolKeys[_token];
@@ -356,8 +373,9 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
      * Defines the Uniswap V4 hooks that are used by our implementation. This will determine
      * the address that our contract **must** be deployed to for Uniswap V4. This address suffix
      * is shown in the dev comments for this function call.
-     *
-     * @dev 1011 1111 0111 00 == 2FDC
+     * 定义了Uniswap V4钩子，用于我们的实现。这将确定我们的合同**必须**部署到Uniswap V4的地址。
+     * 这个地址后缀显示在dev注释中用于此函数调用。
+     * @dev 1011 1111 0111 00 == 2FDC 表示我们实现了所有钩子，除了beforeInitialize和afterInitialize。
      */
     function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
         return Hooks.Permissions({
@@ -381,25 +399,26 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
     /**
      * The hook called before the state of a pool is initialized. Prevents external contracts
      * from initializing pools using our contract as a hook.
-     *
+     * 防止外部合同使用我们的合同作为钩子来初始化池。
      * @dev As we call `poolManager.initialize` from the IHooks contract itself, we bypass this
      * hook call as therefore bypass the prevention.
+     * 因为我们从IHooks合同本身调用`poolManager.initialize`，我们绕过这个钩子调用，因此绕过预防。
      */
     function beforeInitialize(address, PoolKey calldata, uint160) external view override onlyPoolManager returns (bytes4) {
         revert CannotBeInitializedDirectly();
     }
 
     /**
-     * [FL] Handles swaps during the FairLaunch and closure of the position when it expires
-     * [ISP] Checks if we can process an internal swap ahead of the Uniswap swap.
-     * [FD] Captures fees from the internal swap pool
+     * [FL] Handles swaps during the FairLaunch and closure of the position when it expires 在公平启动期间处理交换，并在位置过期时关闭位置
+     * [ISP] Checks if we can process an internal swap ahead of the Uniswap swap. 检查我们是否可以在Uniswap交换之前处理内部交换。
+     * [FD] Captures fees from the internal swap pool 从内部交换池捕获费用
      *
-     * @param _sender The address calling the swap
-     * @param _key The key for the pool
-     * @param _params The parameters for the swap
-     * @param _hookData Arbitrary data handed into the PoolManager by the swapper to be be passed on to the hook
+     * @param _sender The address calling the swap 调用交换的地址
+     * @param _key The key for the pool 池的key
+     * @param _params The parameters for the swap 交换的参数
+     * @param _hookData Arbitrary data handed into the PoolManager by the swapper to be be passed on to the hook 交换者传递给PoolManager的任意数据，将被传递给钩子
      *
-     * @return selector_ The function selector for the hook
+     * @return selector_ The function selector for the hook 钩子的函数选择器
      * @return beforeSwapDelta_ The hook's delta in specified and unspecified currencies. Positive: the hook is owed/took currency, negative: the hook owes/sent currency
      * @return swapFee_ The percentage fee applied to our swap
      */
@@ -416,10 +435,11 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
         /**
          * [SCHEDULE][PREMINE] Check if the token is scheduled to be flaunched and only
          * allow a swap to take place if there is a premine call available.
+         * 检查token是否被安排在某个时间点启动，并且只有在有预挖调用可用时才允许交换。
          */
 
         {
-            // If set, get the timestamp that the pool is scheduled to flaunch
+            // If set, get the timestamp that the pool is scheduled to flaunch 如果设置，获取池计划启动的时间戳
             PoolId poolId = _key.toId();
             uint _flaunchesAt = flaunchesAt[poolId];
             if (_flaunchesAt != 0) {
@@ -428,6 +448,9 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
                 // ensures that we are in the same block and that the amount specified is the same.
                 // We cannot check that the caller is the same as the `_sender` is obfuscated to
                 // be the swap contract.
+                // 如果池有计划启动，我们需要进行额外的检查，看看是否设置了预挖，并且如果它有效。
+                // 预挖的有效性确保我们在同一个区块，并且指定的数量是相同的。
+                // 我们不能检查调用者是否与`_sender`相同，因为它是被混淆的，被认为是交换合同。
                 int premineAmount = _tload(PoolId.unwrap(poolId));
                 if (premineAmount != 0 && _params.amountSpecified == premineAmount) {
                     emit PoolPremine(poolId, premineAmount);
@@ -444,6 +467,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
         }
 
         // Check if our fair launch period hasn't ended and already been processed
+        // 检查我们的公平启动期是否没有结束，并且已经处理过。
         FairLaunch.FairLaunchInfo memory fairLaunchInfo = fairLaunch.fairLaunchInfo(_key.toId());
         if (!fairLaunchInfo.closed) {
             bool nativeIsZero = nativeToken == Currency.unwrap(_key.currency0);
@@ -535,7 +559,8 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
         /**
          * [PREMINE] Delete our transient storage data to prevent premines ever being triggered
-         * over multiple swaps.
+         * over multiple swaps. 
+         * 删除我们的临时存储数据，以防止在多个交换中触发预挖。
          */
 
         {
@@ -549,10 +574,13 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
          * [ISP] We want to see if we have any token1 fee tokens that we can use to fill the swap
          * before it hits the Uniswap pool. This prevents the pool from being affected and reduced
          * gas costs. This also allows us to benefit from the Uniswap routing infrastructure.
-         *
+         * 我们想要检查我们是否有任何token1费用token，我们可以用来在它到达Uniswap池之前填充交换。
+         * 这防止了池受到影响和减少gas成本。这也允许我们受益于Uniswap路由基础设施。
          * This frontruns Uniswap to sell undesired token amounts from our fees into desired tokens
          * ahead of our fee distribution. This acts as a partial orderbook to remove impact against
          * our pool.
+         * 这提前运行Uniswap，将我们不需要的token数量从我们的费用中出售到我们想要的token，
+         * 在我们收取费用之前。这作为一个部分订单簿来减少对我们池的影响。
          */
 
         (uint tokenIn, uint tokenOut) = _internalSwap(poolManager, _key, _params, nativeToken == Currency.unwrap(_key.currency0));
@@ -583,10 +611,11 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
         }
 
         // Capture the beforeSwap tick value before actioning our Uniswap swap
+        // 在执行我们的Uniswap交换之前，捕获beforeSwap tick值
         (, _beforeSwapTick,,) = poolManager.getSlot0(_key.toId());
 
         // Check if the BidWall has become stale, and allow liquidity to be extracted before a
-        // threshold has been built.
+        // threshold has been built. 检查BidWall是否变得陈旧，并在构建阈值之前允许流动性被提取。
         bidWall.checkStalePosition({
             _poolKey: _key,
             _currentTick: _beforeSwapTick,
@@ -594,23 +623,25 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
         });
 
         // Set our return selector
+        // 设置我们的返回选择器
         selector_ = IHooks.beforeSwap.selector;
     }
 
     /**
-     * [FD] Captures fees from the swap to either distribute or send to ISP
-     * [ISP] Once a swap has been made, we distribute fees to our LPs and emit our price update event.
-     * [FD] Tracks the swap for future fee calculations
-     * [FL][BW] If Fair Launch ended then we may have an ETH to deposit into the BidWall
+     * [FD] Captures fees from the swap to either distribute or send to ISP 从交换中捕获费用，要么分配给我们的LP，要么发送给ISP。
+     * [ISP] Once a swap has been made, we distribute fees to our LPs and emit our price update event. 一旦交换完成，我们分配费用给我们的LP，并发出我们的价格更新事件。
+     * [FD] Tracks the swap for future fee calculations 跟踪交换，用于未来的费用计算。
+     * [FL][BW] If Fair Launch ended then we may have an ETH to deposit into the BidWall 如果公平启动结束，我们可能有一个ETH存入BidWall。
      *
-     * @param _sender The sender (or swap contract) making the call
-     * @param _key The key for the pool
-     * @param _params The parameters for the swap
-     * @param _delta The amount owed to the caller (positive) or owed to the pool (negative)
-     * @param _hookData Arbitrary data handed into the PoolManager by the swapper to be be passed on to the hook
+     * @param _sender The sender (or swap contract) making the call 调用者（或交换合同）。  
+     * @param _key The key for the pool 池的key。
+     * @param _params The parameters for the swap 交换的参数。
+     * @param _delta The amount owed to the caller (positive) or owed to the pool (negative) 调用者欠的钱（正数）或池欠的钱（负数）。
+     * @param _hookData Arbitrary data handed into the PoolManager by the swapper to be be passed on to the hook 交换者传递给PoolManager的任意数据，将被传递给钩子。
      *
-     * @return selector_ The function selector for the hook
-     * @return hookDeltaUnspecified_ The hook's delta in unspecified currency. Positive: the hook is owed/took currency, negative: the hook owes/sent currency
+     * @return selector_ The function selector for the hook 钩子的函数选择器。
+     * @return hookDeltaUnspecified_ The hook's delta in unspecified currency. Positive: the hook is owed/took currency, negative: the hook owes/sent currency 
+     * 钩子的未指定货币的delta。正数：钩子欠的钱，负数：钩子欠的钱。
      */
     function afterSwap(
         address _sender,
@@ -624,17 +655,20 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
     ) {
         /**
          * [FD] We need to determine the amount of fees generated by our Uniswap swap to capture,
+         * 
          * rather than sending the full amount to the end user.
+         * 我们需要确定我们Uniswap交换产生的费用，而不是发送全额给最终用户。
          */
 
-        // Determine the currency that we will be taking our fee from
+        // Determine the currency that we will be taking our fee from 确定我们将会从哪个货币中收取费用
         (int128 amount0, int128 amount1) = (_delta.amount0(), _delta.amount1());
         int128 swapAmount = _params.amountSpecified < 0 == _params.zeroForOne ? amount1 : amount0;
 
-        // Capture the swap fees and dispatch the referrer's share if set
+        // Capture the swap fees and dispatch the referrer's share if set 
+        // 捕获交换费用，并分发推荐人的份额（如果设置）
         uint swapFee = _captureAndDepositFees(_key, _params, _sender, swapAmount, _hookData);
 
-        // Increment our swap
+        // Increment our swap 增加我们的交换
         assembly {
             tstore(TS_UNI_AMOUNT0, amount0)
             tstore(TS_UNI_AMOUNT1, amount1)
@@ -644,13 +678,16 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
         /**
          * [ISP] Distribute any fees that have been converted by the swap.
+         * 
+         * 任何被交换转换的费用都需要分配。
          */
 
         _distributeFees(_key);
 
         /**
          * [FD] If we have a feeCalculator, then we want to track the swap data for any
-         * dynamic calculations.
+         * dynamic calculations. 
+         * 如果我们有一个feeCalculator，那么我们想要跟踪交换数据，用于任何动态计算。
          */
 
         PoolId poolId = _key.toId();
@@ -662,7 +699,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
             }
         }
 
-        // Set our return selector
+        // Set our return selector 设置我们的返回选择器
         hookDeltaUnspecified_ = swapFee.toInt128();
 
         selector_ = IHooks.afterSwap.selector;
@@ -675,9 +712,12 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
     }
 
     /**
-     * [FL] Prevent liquidity modification during FairLaunch period
+     * [FL] Prevent liquidity modification during FairLaunch period 
+     * 在公平启动期间防止流动性修改
      * [FD] Before a liquidity position is modified, we distribute fees before they can
+     * 在流动性位置被修改之前，我们分配费用，这样他们就不能获得他们没有赚取的费用。
      * come in to take a share of fees that they have not earned.
+     * 在他们可以获得他们没有赚取的费用之前，他们不能进来分享费用。
      *
      * @param _key The key for the pool
      *
@@ -692,6 +732,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
         bytes4 selector_
     ) {
         // [FL] If in fair launch window, we need to prevent liquidity being added
+        // 如果我们在公平启动窗口中，我们需要防止流动性被添加
         _canModifyLiquidity(_key.toId(), _sender);
 
         selector_ = IHooks.beforeAddLiquidity.selector;
@@ -699,7 +740,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
     /**
      * Once a liquidity has been added, we emit our price update event.
-     *
+     * 一旦流动性被添加，我们发出我们的价格更新事件。
      * @param _sender The initial msg.sender for the add liquidity call
      * @param _key The key for the pool
      * @param _delta The caller's balance delta after adding liquidity; the sum of principal delta, fees accrued, and hook delta
@@ -726,8 +767,10 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
     }
 
     /**
-     * [FL] Prevent liquidity modification during FairLaunch period
+     * [FL] Prevent liquidity modification during FairLaunch period 
+     * 在公平启动期间防止流动性修改
      * [FD] Before liquidity is removed, we distribute fees.
+     * 在流动性被移除之前，我们分配费用。
      *
      * @param _key The key for the pool
      *
@@ -750,7 +793,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
     /**
      * Once liquidity has been removed, we emit our price update event.
-     *
+     * 一旦流动性被移除，我们发出我们的价格更新事件。
      * @param _sender The initial msg.sender for the remove liquidity call
      * @param _key The key for the pool
      * @param _delta The caller's balance delta after removing liquidity; the sum of principal delta, fees accrued, and hook delta
@@ -774,7 +817,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
     /**
      * The hook called after donate, emitting our price update event.
-     *
+     * 一旦捐赠完成，我们发出我们的价格更新事件。
      * @param _sender The initial msg.sender for the donate call
      * @param _key The key for the pool
      * @param _amount0 The amount of token0 being donated
@@ -791,7 +834,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
     /**
      * Gets the ETH fee that must be paid to flaunch a token.
-     *
+     * 获取启动token所需的ETH费用。
      * @return The ETH value of the fee
      */
     function getFlaunchingFee(bytes calldata _initialPriceParams) public view returns (uint) {
@@ -800,7 +843,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
     /**
      * Gets the ETH market cap for a new token that will be flaunched.
-     *
+     * 获取启动token所需的ETH市场资本。
      * @return The ETH market cap value
      */
     function getFlaunchingMarketCap(bytes calldata _initialPriceParams) public view returns (uint) {
@@ -809,7 +852,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
     /**
      * Allows the contract used to flaunch a new token to be updated.
-     *
+     * 允许使用新token的合同被更新。
      * @param _flaunchContract The new {IFlaunch} contract address
      */
     function setFlaunch(address _flaunchContract) public onlyOwner {
@@ -819,7 +862,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
     /**
      * Updates the `IInitialPrice` contract address that is used during `flaunch` to calculate
      * the initial tick / sqrtPriceX96 value.
-     *
+     * 更新`IInitialPrice`合同地址，用于`flaunch`期间计算初始tick / sqrtPriceX96值。
      * @param _initialPrice The contract address for the `IInitialPrice` contract
      */
     function setInitialPrice(address _initialPrice) public onlyOwner {
@@ -829,6 +872,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
     /**
      * Calls for the BidWall to be closed, as this requires callback from the {PoolManager}.
+     * 调用BidWall关闭，因为这需要来自{PoolManager}的回调。
      */
     function closeBidWall(PoolKey memory _key) public {
         // Ensure that the call is made by the BidWall which validates logic
@@ -850,7 +894,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
     /**
      * This function should only be called by the `closeBidWall` function to unlock the {PoolManager}
      * interactions for the `{BidWall}.closeBidWall` function.
-     *
+     * 这个函数应该只被`closeBidWall`函数调用，以解锁{PoolManager}的交互，用于`{BidWall}.closeBidWall`函数。
      * @param _data The encoded {PoolKey} for the `closeBidWall` request
      *
      * @return bytes Empty data; nothing will be returned
@@ -862,7 +906,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
     /**
      * Capture the fees from our swap. This could either be from an internal swap (`beforeSwap`)
      * or from the actual Uniswap swap (`afterSwap`).
-     *
+     * 捕获我们的交换费用。这可以是内部交换(`beforeSwap`)或实际的Uniswap交换(`afterSwap`)。
      * @dev This is only used due to too many variables in the `beforeSwap` function
      *
      * @param _key The {PoolKey} that the swap was made against
@@ -922,10 +966,11 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
      * We want to be able to distribute fees across our {FeeDistribution} recipients
      * when we reach a set threshold. This will only ever distribute the ETH equivalent
      * token, as the non-ETH token will be converted via the {InternalSwapPool} hook logic.
-     *
+     * 我们想要能够在我们达到设置的阈值时，分配我们的费用给我们的{FeeDistribution}接收者。
+     * 这将只会分配ETH等价的token，因为非ETH token将通过{InternalSwapPool}钩子逻辑转换。
      * @dev There referrer has already received their share, so they do not need to be
      * taken into account at this point.
-     *
+     * 在这里，推荐人已经收到了他们的份额，所以他们不需要被考虑。
      * @param _poolKey The PoolKey reference that will have fees distributed
      */
     function _distributeFees(PoolKey memory _poolKey) internal {
@@ -1004,7 +1049,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
     /**
      * Using the `tstore` values that we have generated along the way, we emit an event that shows
      * the breakdown of fees earned at each swap point.
-     *
+     * 使用我们沿途生成的`tstore`值，我们发出一个事件，显示每个交换点赚取的费用的 breakdown。
      * @param _poolId The PoolId that is being emitted
      * @param _sender The router of the swap
      */
@@ -1049,7 +1094,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
     /**
      * Emits an event that provides pool state updates and passes the data to subscribers.
-     *
+     * 发出一个事件，提供池状态更新，并传递数据给订阅者。
      * @param _poolId The PoolId that has been updated
      * @param _key The selector being sent to notification subscribers
      * @param _data The data being sent to notification subscribers
@@ -1065,7 +1110,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
     /**
      * Settles tokens against the PoolManager based on the BalanceDelta passed.
-     *
+     * 根据传递的BalanceDelta，结算token与PoolManager。
      * @dev This is required to be separated due to Stack Too Deep errors
      *
      * @param _poolKey The pool key to settle against
@@ -1088,7 +1133,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
     /**
      * We need to be able to set the (un)specified token to amount0 / amount1 for the expected
      * event emit format.
-     *
+     * 我们需要能够设置(未指定)token为amount0 / amount1，用于预期的事件emit格式。
      * @param _params The `SwapParams` used to capture the delta
      * @param _key_amount0 The tstore key for the token0 amount
      * @param _key_amount1 The tstore key for the token1 amount
@@ -1113,7 +1158,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
     /**
      * Maps our swap fee to the expected event emit format.
-     *
+     * 我们需要能够设置(未指定)token为amount0 / amount1，用于预期的事件emit格式。
      * @param _params The `SwapParams` used to capture the delta
      * @param _key_fee0 The tstore key for the token0 fee amount
      * @param _key_fee1 The tstore key for the token1 fee amount
@@ -1144,7 +1189,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
     /**
      * If in fair launch window, we need to prevent liquidity being added. We can, however, modify
      * liquidity if we are making the call from the BidWall or FairLaunch contracts.
-     *
+     * 如果我们在公平启动窗口中，我们需要防止流动性被添加。然而，如果我们从BidWall或FairLaunch合同调用，我们可以修改流动性。
      * @param _poolId The PoolId having the liquidity modified
      * @param _sender The address that is trying to modify liquidity
      */
@@ -1165,10 +1210,11 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
     /**
      * Helper function to allow for tstore-d variables to be called individually. This saves us
+     * 允许单独调用tstore-d变量。这节省了我们定义一个额外的变量，在我们`tload`调用之前。
      * defining an additional variable before our `tload` calls inside the function.
-     *
+     * 在我们函数内部的`tload`调用之前，定义一个额外的变量。
      * @param _key The `tstore` key to load
-     *
+     * 加载`tstore`键的值。
      * @return value_ The `int` value in the tstore
      */
     function _tload(bytes32 _key) internal view returns (int value_) {
@@ -1177,7 +1223,7 @@ contract PositionManager is BaseHook, FeeDistributor, InternalSwapPool, StoreKey
 
     /**
      * Override to return true to make `_initializeOwner` prevent double-initialization.
-     *
+     * 重写以返回true，使`_initializeOwner`防止双重初始化。
      * @return bool Set to `true` to prevent owner being reinitialized.
      */
     function _guardInitializeOwner() internal pure override returns (bool) {

@@ -118,11 +118,11 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
      * @param _memecoinImplementation The {Memecoin} implementation address
      * @param _baseURI The default baseUri for the ERC721
      */
-    constructor (address _memecoinImplementation, string memory _baseURI) {
+    constructor (address _memecoinImplementation, string memory _baseURI) {  // 初始化Flaunch合约，设置memecoin实现地址和基础URI
         memecoinImplementation = _memecoinImplementation;
         baseURI = _baseURI;
 
-        _initializeOwner(msg.sender);
+        _initializeOwner(msg.sender);  // 初始化合约所有者
     }
 
     /**
@@ -130,8 +130,8 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
      * actually flaunch tokens, converting the contract from a satellite contract into a fully
      * fledged Flaunch protocol implementation.
      *
-     * @param _positionManager The Flaunch {PositionManager}
-     * @param _memecoinTreasuryImplementation The {MemecoinTreasury} implementation address
+     * @param _positionManager The Flaunch {PositionManager} 
+     * @param _memecoinTreasuryImplementation The {MemecoinTreasury} implementation address   金库实现地址
      */
     function initialize(PositionManager _positionManager, address _memecoinTreasuryImplementation) external onlyOwner initializer {
         positionManager = _positionManager;
@@ -141,6 +141,7 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
     /**
      * Flaunches a new token, deploying the required implementations and creating a new ERC721. The
      * tokens are sent to the `_creator` to prove ownership of the pool.
+     * 创建一个新的token，部署所需的实现并创建一个新的ERC721。将token发送给`_creator`以证明对池的所有权。
      */
     function flaunch(
         PositionManager.FlaunchParams calldata _params
@@ -193,7 +194,7 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
     /**
      * Allows a contract owner to update the name and symbol of the ERC20 token so
      * that if one is created with malformed, unintelligible or offensive data then
-     * we can replace it.
+     * we can replace it.  当一个memecoin创建的不理想，可以修改
      *
      * @param _memecoin The memecoin address
      * @param name_ The new name for the token
@@ -253,7 +254,7 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
 
     /**
      * Returns the Uniform Resource Identifier (URI) for token id.
-     *
+     * 根据id返回URI，如果token被销毁，则返回空字符串
      * @dev We prevent the token from erroring if it was burned, and instead we just check against
      * the current tokenId iteration we have stored.
      *
@@ -274,7 +275,7 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
 
     /**
      * Helper to show the {Memecoin} address for the ERC721.
-     *
+     * 根据id返回memecoin地址
      * @param _tokenId The token ID to get the {Memecoin} for
      *
      * @return address {Memecoin} address
@@ -285,7 +286,7 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
 
     /**
      * Helper to show the {MemecoinTreasury} address for the ERC721.
-     *
+     * 根据id返回memecoin金库地址
      * @param _tokenId The token ID to get the {MemecoinTreasury} for
      *
      * @return address {MemecoinTreasury} address
@@ -296,7 +297,7 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
 
     /**
      * Helper to show the {PoolId} address for the ERC721 token.
-     *
+     * 根据id返回poolId地址
      * @param _tokenId The token ID to get the {PoolId} for
      *
      * @return PoolId The {PoolId} for the token
@@ -320,13 +321,13 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
      * Allows anyone to trigger their token to be bridged to another L2. This will then relay the
      * message to the other L2 which will complete the bridging flow in the `finalizeBridge`
      * function call.
-     *
+     * 允许任何人触发他们的token被桥接到另一个L2。这将然后传递消息到另一个L2，在`finalizeBridge`函数中完成桥接流程。
      * The token contract will be created with the same salt as the initial token, so the address
      * will persist, but won't mint an initial supply like the `flaunch` function call does.
-     *
+     * token合约将被创建与初始token相同的盐，所以地址将持久化，但不会像`flaunch`函数调用那样铸造初始供应。
      * @dev More information regarding Superchain Interoperability can be found
      * [here](https://supersim.pages.dev/guides/interop/).
-     *
+     * 更多关于Superchain Interoperability的信息可以在这里找到：https://supersim.pages.dev/guides/interop/
      * @param _tokenId The ERC721 memestream tokenId to bridge the memecoin of
      * @param _chainId The destination L2 chainId
      */
@@ -388,7 +389,7 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
     /**
      * Called after the `initializeBridge` function to validate the bridging request and subsequently
      * deploy the memecoin contract code onto the L2 chain.
-     *
+     * 在`initializeBridge`函数之后调用，验证桥接请求并随后部署memecoin合约代码到L2链。
      * @param _tokenId The ERC721 memestream tokenId that is being bridged
      * @param _metadata Memecoin token metadata to initialize with
      */
@@ -428,7 +429,7 @@ contract Flaunch is ERC721, IFlaunch, Initializable, Ownable {
 
     /**
      * Override to return true to make `_initializeOwner` prevent double-initialization.
-     *
+     * 防止所有者被重新初始化。
      * @return bool Set to `true` to prevent owner being reinitialized.
      */
     function _guardInitializeOwner() internal pure override returns (bool) {
