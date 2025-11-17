@@ -244,7 +244,7 @@ contract FairLaunch is AccessControl {
         PoolId poolId = _poolKey.toId();
         FairLaunchInfo storage info = _fairLaunchInfo[poolId];
 
-        // No tokens, no fun.
+        // No tokens, no fun. 没有代币，没有乐趣。
         if (_amountSpecified == 0) {
             return (beforeSwapDelta_, balanceDelta_, info);
         }
@@ -253,6 +253,7 @@ contract FairLaunch is AccessControl {
         uint tokensOut;
 
         // If we have a negative amount specified, then we have an ETH amount passed in and want
+        // 如果指定了负数金额，那么我们有一个ETH金额传入，想要购买尽可能多的代币。
         // to buy as many tokens as we can for that price.
         if (_amountSpecified < 0) {
             ethIn = uint(-_amountSpecified);
@@ -265,6 +266,7 @@ contract FairLaunch is AccessControl {
         }
         // Otherwise, if we have a positive amount specified, then we know the number of tokens that
         // are being purchased and need to calculate the amount of ETH required.
+        // 否则，如果指定了正数金额，那么我们知道要购买的代币数量，需要计算所需的ETH数量。
         else {
             tokensOut = uint(_amountSpecified);
             ethIn = _getQuoteAtTick(
@@ -277,22 +279,24 @@ contract FairLaunch is AccessControl {
 
         // If the user has requested more tokens than are available in the fair launch, then we
         // need to strip back the amount that we can fulfill.
+        // 如果用户请求的代币数量超过了公平启动的供应量，那么我们需要减少可满足的数量。
         if (tokensOut > info.supply) {
             // Calculate the percentage of tokensOut relative to the threshold and reduce the `ethIn`
             // value by the same amount. There may be some slight accuracy loss, but it's all good.
+            // 计算tokensOut相对于阈值的百分比，并按相同数量减少ethIn值。可能会有一些轻微的精度损失，但没关系。
             uint percentage = info.supply * 1e18 / tokensOut;
             ethIn = (ethIn * percentage) / 1e18;
 
-            // Update our `tokensOut` to the supply limit
+            // Update our `tokensOut` to the supply limit 更新我们的`tokensOut`到供应限制
             tokensOut = info.supply;
         }
 
-        // Get our BeforeSwapDelta response ready
+        // Get our BeforeSwapDelta response ready 准备好我们的BeforeSwapDelta响应
         beforeSwapDelta_ = (_amountSpecified < 0)
             ? toBeforeSwapDelta(ethIn.toInt128(), -tokensOut.toInt128())
             : toBeforeSwapDelta(-tokensOut.toInt128(), ethIn.toInt128());
 
-        // Define our BalanceDelta
+        // Define our BalanceDelta 定义我们的BalanceDelta
         balanceDelta_ = toBalanceDelta(
             _nativeIsZero ? ethIn.toInt128() : -tokensOut.toInt128(),
             _nativeIsZero ? -tokensOut.toInt128() : ethIn.toInt128()
