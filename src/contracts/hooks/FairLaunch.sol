@@ -373,7 +373,7 @@ contract FairLaunch is AccessControl {
 
     /**
      * Given a tick and a token amount, calculates the amount of token received in exchange.
-     *
+     * 给定一个tick和代币数量，计算获得的代币数量。
      * @dev Forked from the `Uniswap/v3-periphery` {OracleLibrary} contract.
      *
      * @param _tick Tick value used to calculate the quote
