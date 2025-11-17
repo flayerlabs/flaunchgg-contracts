@@ -21,14 +21,16 @@ import {TickFinder} from '@flaunch/types/TickFinder.sol';
 
 /**
  * Adds functionality to the {PositionManager} that promotes a fair token launch.
- *
+ * 添加功能到{PositionManager}，促进公平代币启动。
  * This creates a time window right after the token is launched that keeps the token at
  * the same price in a single tick position. Fees earned from this are kept within the
  * position and cannot be sold into until the fair launch window has finished.
- *
+ * 这创建了一个时间窗口，在代币启动后，保持代币在单个tick位置的价格。
+ * 从这笔交易中赚取的费用保持在位置中，不能在公平启动窗口结束前卖出。
  * Once the FairLaunch period has ended, the ETH raised and the remaining tokens are
  * both deployed into a Uniswap position to facilitate ongoing transactions and create
  * a price discovery.
+ * 一旦公平启动窗口结束，筹集的ETH和剩余的代币都被部署到一个Uniswap位置，以促进持续交易和价格发现。
  *
  * @dev Based on: https://github.com/fico23/fundraise-hook
  */
@@ -43,15 +45,15 @@ contract FairLaunch is AccessControl {
     error CannotSellTokenDuringFairLaunch();
     error NotPositionManager();
 
-    /// Emitted when a Fair Launch position is created
+    /// Emitted when a Fair Launch position is created 当公平启动位置被创建时发出事件
     event FairLaunchCreated(PoolId indexed _poolId, uint _tokens, uint _startsAt, uint _endsAt);
 
-    /// Emitted when a Fair Launch is ended and rebalanced
+    /// Emitted when a Fair Launch is ended and rebalanced 当公平启动结束并重新平衡时发出事件
     event FairLaunchEnded(PoolId indexed _poolId, uint _revenue, uint _supply, uint _endedAt);
 
     /**
      * Holds FairLaunch information for a Pool.
-     *
+     * 持有池的公平启动信息。
      * @member startsAt The unix timestamp that the FairLaunch window starts
      * @member endsAt The unix timestamp that the FairLaunch window ends
      * @member initialTick The tick that the FairLaunch position was created at
@@ -68,27 +70,28 @@ contract FairLaunch is AccessControl {
         bool closed;
     }
 
-    /// Maps a PoolId to a FairLaunchInfo struct
+    /// Maps a PoolId to a FairLaunchInfo struct 将PoolId映射到FairLaunchInfo结构体
     mapping (PoolId _poolId => FairLaunchInfo _info) internal _fairLaunchInfo;
 
-    /// Our Uniswap V4 {PoolManager} contract address
+    /// Our Uniswap V4 {PoolManager} contract address 我们的Uniswap V4 {PoolManager}合同地址
     IPoolManager public immutable poolManager;
 
     /**
      * Stores our native token.
-     *
+     * 存储我们的原生代币。
      * @param _poolManager The Uniswap V4 {PoolManager} contract
      */
     constructor (IPoolManager _poolManager) {
         poolManager = _poolManager;
 
         // Set our caller to have the default admin of protocol roles
+        // 设置我们的调用者为协议角色的默认管理员
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /**
      * Checks if the {PoolKey} is within the fair launch window.
-     *
+     * 检查{PoolKey}是否在公平启动窗口内。
      * @param _poolId The ID of the PoolKey
      *
      * @return If the {PoolKey} is within the fair launch window
@@ -100,7 +103,7 @@ contract FairLaunch is AccessControl {
 
     /**
      * Helper function to call the FairLaunchInfo struct for a pool.
-     *
+     * 调用池的FairLaunchInfo结构体。
      * @param _poolId The ID of the PoolKey
      *
      * @return The FairLaunchInfo for the pool
@@ -111,7 +114,7 @@ contract FairLaunch is AccessControl {
 
     /**
      * Creates an initial fair launch position.
-     *
+     * 创建一个初始公平启动位置。
      * @param _poolId The ID for the pool being initialized
      * @param _initialTokenFairLaunch The amount of tokens to add as single sided fair launch liquidity
      */
@@ -125,15 +128,19 @@ contract FairLaunch is AccessControl {
         FairLaunchInfo memory
     ) {
         // If we have no initial tokens, then we need to overwrite our fair launch duration to zero
+        // 如果没有初始代币，那么我们需要将公平启动持续时间重写为零
         if (_initialTokenFairLaunch == 0) {
             _fairLaunchDuration = 0;
         }
 
         // Determine the time that the fair launch window will close
+        // 确定公平启动窗口关闭的时间
         uint endsAt = _flaunchesAt + _fairLaunchDuration;
 
         // Map these tokens into an pseudo-escrow that we can reference during the sale
+        // 将这些代币映射到一个伪-托管，我们可以在销售期间引用
         // and activate our pool fair launch window.
+        // 并激活我们的池公平启动窗口。
         _fairLaunchInfo[_poolId] = FairLaunchInfo({
             startsAt: _flaunchesAt,
             endsAt: endsAt,
@@ -151,7 +158,8 @@ contract FairLaunch is AccessControl {
      * Closes the FairLaunch position and recreates the position as a wide range position immediately
      * above the tick for our memecoin. This position is comprised of tokens not allocated to the
      * Fair Launch. Any unsold tokens from the Fair Launch will be burned.
-     *
+     * 关闭公平启动位置，并立即重新创建一个位置，作为我们memecoin上方的一个宽范围位置。
+     * 这个位置由未分配给公平启动的代币组成。公平启动未售出的代币将被销毁。
      * @param _poolKey The PoolKey we are closing the FairLaunch position of
      * @param _tokenFees The amount of token fees that need to remain in the {PositionManager}
      * @param _nativeIsZero If our native token is `currency0`
@@ -206,17 +214,18 @@ contract FairLaunch is AccessControl {
     /**
      * When we are filling from our Fair Launch position, we will always be buying tokens
      * with ETH. The amount specified that is passed in, however, could be positive or negative.
-     *
+     * 当我们从我们的公平启动位置填充时，我们总是用ETH购买代币。然而，传入的数量可能是正数或负数。
      * The positive / negative flag will require us to calculate the amount the user will get in
      * a different way. Positive: How much ETH it costs to get amount. Negative: How many tokens
      * I can get for amount.
-     *
+     * 正数/负数标志将要求我们以不同的方式计算用户将获得的数量。正数：获得数量所需的ETH数量。负数：获得数量所需的代币数量。
      * The amount requested **can** exceed the Fair Launch position, but we will additionally
      * have to call `_closeFairLaunchPosition` to facilitate it during this call. This will
      * provide additional liquidity before the swap actually takes place.
-     *
+     * 请求的数量**可以**超过公平启动位置，但我们还需要调用`_closeFairLaunchPosition`来促进它在这笔交易期间。
+     * 这将提供额外的流动性，在交换实际发生之前。
      * @dev `zeroForOne` will always be equal to `_nativeIsZero` as it will always be ETH -> Token.
-     *
+     * @dev `zeroForOne`将始终等于`_nativeIsZero`，因为它总是ETH -> Token。
      * @param _poolKey The PoolKey we are filling from
      * @param _amountSpecified The amount specified in the swap
      * @param _nativeIsZero If our native token is `currency0`
@@ -298,7 +307,7 @@ contract FairLaunch is AccessControl {
     /**
      * Allows calls from the {PositionManager} to modify the amount of revenue stored against a pool's
      * FairLaunch position. This is required to correctly attribute fees taken.
-     *
+     * 允许来自{PositionManager}的调用修改存储在池的公平启动位置上的收入。这是正确归因所收取费用所必需的。
      * @param _poolId The ID of the PoolKey
      * @param _revenue The revenue amount to add or subtract
      */
@@ -312,7 +321,7 @@ contract FairLaunch is AccessControl {
 
     /**
      * Creates an immutable, single-sided position when the FairLaunch window is closed.
-     *
+     * 在公平启动窗口关闭时创建一个不可变的单边位置。
      * @param _poolKey The PoolKey to create a position against
      * @param _tickLower The lower tick of the position
      * @param _tickUpper The upper tick of the position
@@ -401,6 +410,7 @@ contract FairLaunch is AccessControl {
 
     /**
      * Ensures that only a {PositionManager} can call the function.
+     * 确保只有{PositionManager}可以调用函数。
      */
     modifier onlyPositionManager {
         if (!hasRole(ProtocolRoles.POSITION_MANAGER, msg.sender)) revert NotPositionManager();
