@@ -20,6 +20,7 @@ import {ITreasuryAction} from '@flaunch-interfaces/ITreasuryAction.sol';
 /**
  * Allows approved actions to be executed by the `PoolCreator` for their specific pool, using
  * tokens in their {MemecoinTreasury}.
+ * 允许批准的操作由`PoolCreator`执行，使用他们的{MemecoinTreasury}中的代币。
  */
 contract MemecoinTreasury is Initializable, ReentrancyGuard {
 
@@ -45,7 +46,7 @@ contract MemecoinTreasury is Initializable, ReentrancyGuard {
 
     /**
      * Sets the Flaunch {PositionManager} and native token, and initializes with the `PoolKey`.
-     *
+     * 设置Flaunch {PositionManager}和原生代币，并初始化与`PoolKey`。
      * @param _actionManager The {TreasuryActionManager} contract address
      * @param _nativeToken The native token address used by Flaunch
      * @param _poolKey The pool that is being actioned against
@@ -59,7 +60,7 @@ contract MemecoinTreasury is Initializable, ReentrancyGuard {
 
     /**
      * Executes an approved {ITreasuryAction}.
-     *
+     * 执行批准的{ITreasuryAction}。
      * @dev Only to `PoolCreator` can make this call, otherwise reverted with `Unauthorized`
      *
      * @param _action The {ITreasuryAction} address to execute
@@ -95,7 +96,8 @@ contract MemecoinTreasury is Initializable, ReentrancyGuard {
     /**
      * Claims any pending fees allocated to the {MemecoinTreasury}. We do not unwrap the flETH
      * in our claim call to ensure that we keep two persisted tokens as per the {PoolKey}.
-     *
+     * 提取任何分配给{MemecoinTreasury}的待处理费用。我们不在我们的claim调用中提取flETH，
+     * 以确保我们保持两个持久化token，如{PoolKey}所示。
      * @dev This call does not require protection and can be called by anyone
      */
     function claimFees() public {
@@ -104,6 +106,7 @@ contract MemecoinTreasury is Initializable, ReentrancyGuard {
 
     /**
      * Allows the contract to receive ETH when withdrawn from the flETH token.
+     * 允许合约接收ETH，当从flETH代币中提取时。
      */
     receive () external payable {}
 

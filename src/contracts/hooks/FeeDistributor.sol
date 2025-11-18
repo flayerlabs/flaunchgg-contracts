@@ -20,6 +20,7 @@ import {IFLETH} from '@flaunch-interfaces/IFLETH.sol';
 /**
  * This hook will allow our pools to have a range of fee distribution approaches. This will
  * fallback onto a global fee distribution if there is not a specific.
+ * 这个钩子将允许我们的池具有各种费用分配方法。如果池没有特定的费用分配，则回退到全局费用分配。
  */
 abstract contract FeeDistributor is Ownable {
 
@@ -55,17 +56,18 @@ abstract contract FeeDistributor is Ownable {
 
     /**
      * Stores the percentages of fee distribution.
-     *
+     * 存储费用分配的百分比。
      * @dev This works in a waterfall approach, with a percentage taking a share before
      * passing the potential allocation on to the next. This means that the percentages
      * listed don't need to equal 100%:
-     *
+     * 这个工作在级联方法中，一个百分比在传递给下一个之前先拿走一部分。这意味着列出的百分比不需要等于100%：
      * `Fee priority: swapfee -> referrer -> protocol -> creator -> bidwall`
+     * 费用优先级：交换费用 -> 推荐人 -> 协议 -> 创建者 -> BidWall
      *
-     * @member swapFee The amount of the transaction taken as fee
-     * @member referrer The percentage that the referrer will receive
-     * @member protocol The percentage that the protocol will receive
-     * @member active If a FeeDistribution struct has been set for the mapping
+     * @member swapFee The amount of the transaction taken as fee 交换费用的百分比
+     * @member referrer The percentage that the referrer will receive 推荐人费用的百分比
+     * @member protocol The percentage that the protocol will receive 协议费用的百分比
+     * @member active If a FeeDistribution struct has been set for the mapping 如果一个FeeDistribution结构体被设置为映射
      */
     struct FeeDistribution {
         uint24 swapFee;
@@ -74,40 +76,40 @@ abstract contract FeeDistributor is Ownable {
         bool active;
     }
 
-    /// Helpful constant to define 100% to 2dp
+    /// Helpful constant to define 100% to 2dp 帮助常量定义100%到2dp
     uint internal constant ONE_HUNDRED_PERCENT = 100_00;
 
-    /// The maximum value of a protocol fee allocation
+    /// The maximum value of a protocol fee allocation 协议费用分配的最大值
     uint24 public constant MAX_PROTOCOL_ALLOCATION = 10_00;
 
     /// Maps the creators share of the fee distribution that can be set by the creator
-    /// to reduce fees from hitting the bidwall.
-    mapping (PoolId _poolId => uint24 _creatorFee) internal creatorFee;
+    /// to reduce fees from hitting the bidwall. 映射创建者的费用分配，可以由创建者设置，以减少费用命中BidWall。
+    mapping (PoolId _poolId => uint24 _creatorFee) internal creatorFee; 
 
     /// Maps individual pools to custom `FeeDistribution`s. These will overwrite the
-    /// global `feeDistribution`.
+    /// global `feeDistribution`. 映射单个池到自定义`FeeDistribution`s。这些将覆盖全局`feeDistribution`。
     mapping (PoolId _poolId => FeeDistribution _feeDistribution) internal poolFeeDistribution;
 
-    /// Maps our IERC20 token addresses to their registered PoolKey
+    /// Maps our IERC20 token addresses to their registered PoolKey 映射我们的IERC20代币地址到它们的注册PoolKey
     mapping (address _memecoin => PoolKey _poolKey) internal _poolKeys;
 
-    /// The global FeeDistribution that will be applied to all pools
+    /// The global FeeDistribution that will be applied to all pools 全局FeeDistribution，将应用于所有池
     FeeDistribution internal feeDistribution;
 
-    /// The {ReferralEscrow} contract that will be used
+    /// The {ReferralEscrow} contract that will be used 将使用的{ReferralEscrow}合同
     ReferralEscrow public referralEscrow;
 
-    /// The {FeeEscrow} contract that will be used
+    /// The {FeeEscrow} contract that will be used 将使用的{FeeEscrow}合同
     FeeEscrow public feeEscrow;
 
-    /// The {IFeeCalculator} used to calculate swap fees
+    /// The {IFeeCalculator} used to calculate swap fees 将使用的{IFeeCalculator}合同，用于计算交换费用
     IFeeCalculator public feeCalculator;
     IFeeCalculator public fairLaunchFeeCalculator;
 
-    /// Our internal native token
+    /// Our internal native token   
     address public nativeToken;
 
-    /// The address of the $FLAY token's governance
+    /// The address of the $FLAY token's governance  $FLAY代币治理的地址
     address public flayGovernance;
 
     /**
@@ -120,7 +122,7 @@ abstract contract FeeDistributor is Ownable {
     constructor (address _nativeToken, FeeDistribution memory _feeDistribution, address _protocolOwner, address _flayGovernance, address _feeEscrow) {
         nativeToken = _nativeToken;
 
-        // Set our initial fee distribution
+        // Set our initial fee distribution 设置我们的初始费用分配
         _validateFeeDistribution(_feeDistribution);
         feeDistribution = _feeDistribution;
         emit FeeDistributionUpdated(_feeDistribution);
@@ -128,10 +130,10 @@ abstract contract FeeDistributor is Ownable {
         // Set our $FLAY token governance address
         flayGovernance = _flayGovernance;
 
-        // Set our fee escrow
+        // Set our fee escrow 设置我们的费用托管
         feeEscrow = FeeEscrow(payable(_feeEscrow));
 
-        // Grant ownership permissions to the caller
+        // Grant ownership permissions to the caller 授予调用者所有权权限
         if (owner() == address(0)) {
             _initializeOwner(_protocolOwner);
         }
@@ -140,24 +142,24 @@ abstract contract FeeDistributor is Ownable {
     /**
      * Allows a deposit to be made against a user. The amount is stored within the
      * {FeeEscrow} contract to be claimed later.
-     *
+     * 允许对用户进行存款。金额存储在{FeeEscrow}合同中，稍后可以提取。
      * @param _poolId The PoolId that the deposit came from
      * @param _recipient The recipient of the transferred token
      * @param _amount The amount of the token to be transferred
      */
     function _allocateFees(PoolId _poolId, address _recipient, uint _amount) internal {
-        // set allowance so that `feeEscrow` can pull the fees
+        // set allowance so that `feeEscrow` can pull the fees 设置允许，以便`feeEscrow`可以提取费用
         if (IFLETH(nativeToken).allowance(msg.sender, address(feeEscrow)) < _amount) {
             IFLETH(nativeToken).approve(address(feeEscrow), type(uint).max);
         }
 
-        // allocate the fees in the escrow
+        // allocate the fees in the escrow 在托管中分配费用
         feeEscrow.allocateFees(_poolId, _recipient, _amount);
     }
 
     /**
      * Captures fees following a swap.
-     *
+     * 捕获交换后的费用。
      * @param _poolManager The Uniswap V4 {PoolManager}
      * @param _key The key for the pool being swapped against
      * @param _params The swap parameters called in the swap
