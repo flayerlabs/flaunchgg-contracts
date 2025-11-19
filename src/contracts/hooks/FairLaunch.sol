@@ -160,9 +160,9 @@ contract FairLaunch is AccessControl {
      * Fair Launch. Any unsold tokens from the Fair Launch will be burned.
      * 关闭公平启动位置，并立即重新创建一个位置，作为我们memecoin上方的一个宽范围位置。
      * 这个位置由未分配给公平启动的代币组成。公平启动未售出的代币将被销毁。
-     * @param _poolKey The PoolKey we are closing the FairLaunch position of
-     * @param _tokenFees The amount of token fees that need to remain in the {PositionManager}
-     * @param _nativeIsZero If our native token is `currency0`
+     * @param _poolKey The PoolKey we are closing the FairLaunch position of 我们关闭公平启动位置的池键
+     * @param _tokenFees The amount of token fees that need to remain in the {PositionManager} 需要保留在{PositionManager}中的代币手续费数量
+     * @param _nativeIsZero If our native token is `currency0` 如果我们的原生代币是`currency0`
      */
     function closePosition(
         PoolKey memory _poolKey,
@@ -178,7 +178,7 @@ contract FairLaunch is AccessControl {
         int24 tickUpper;
 
         if (_nativeIsZero) {
-            // ETH position
+            // ETH position  ETH位置
             tickLower = (info.initialTick + 1).validTick(false);
             tickUpper = tickLower + TickFinder.TICK_SPACING;
             _createImmutablePosition(_poolKey, tickLower, tickUpper, info.revenue, true);
