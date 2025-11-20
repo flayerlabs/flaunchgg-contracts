@@ -114,7 +114,7 @@ abstract contract FeeDistributor is Ownable {
 
     /**
      * Set up our initial FeeDistribution data.
-     *
+     * 设置我们的初始FeeDistribution数据。
      * @param _nativeToken Our internal native token
      * @param _feeDistribution The initial FeeDistribution value
      * @param _protocolOwner The initial EOA owner of the contract
@@ -181,7 +181,7 @@ abstract contract FeeDistributor is Ownable {
     ) internal returns (
         uint swapFee_
     ) {
-        // If we have an empty swapAmount then we can exit early
+        // If we have an empty swapAmount then we can exit early 如果我们没有交换金额，则可以提前退出
         if (_swapAmount == 0) {
             return swapFee_;
         }
@@ -217,7 +217,7 @@ abstract contract FeeDistributor is Ownable {
      * Checks if a referrer has been set in the hookData and transfers them their share of
      * the fee directly. This call is made when a swap is taking place and returns the new
      * fee amount after the referrer fee has been removed from it.
-     *
+     * 检查是否在hookData中设置了推荐人，并直接将他们的份额转移到他们。当交换发生时调用，返回移除推荐人费用后的新费用金额。
      * @param _key The pool key to distribute referrer fees for
      * @param _swapFeeCurrency The currency of the swap fee
      * @param _swapFee The total value of the swap fee
@@ -271,9 +271,9 @@ abstract contract FeeDistributor is Ownable {
 
     /**
      * Taking an amount, show the split that each of the different recipients will receive.
-     *
+     * 根据一个金额，显示每个不同接收者将收到的份额。
      * @dev Fee priority: swapfee -> referrer -> || protocol -> creator -> bidwall ||
-     *
+     * 费用优先级：交换费用 -> 推荐人 -> || 协议 -> 创建者 -> BidWall ||
      * @param _poolId The PoolId that is having the fee split calculated
      * @param _amount The amount of token being passed in
      *
@@ -304,7 +304,7 @@ abstract contract FeeDistributor is Ownable {
 
     /**
      * Updates the {ReferralEscrow} contract that will store referrer fees.
-     *
+     * 更新将存储推荐人费用的{ReferralEscrow}合同。
      * @param _referralEscrow The new {ReferralEscrow} contract address
      */
     function setReferralEscrow(address payable _referralEscrow) public onlyOwner {
@@ -315,7 +315,7 @@ abstract contract FeeDistributor is Ownable {
 
     /**
      * Allows the governing contract to make global changes to the fees.
-     *
+     * 允许治理合同对费用进行全局更改。
      * @param _feeDistribution The new FeeDistribution value
      */
     function setFeeDistribution(FeeDistribution memory _feeDistribution) public onlyOwner {
@@ -328,7 +328,7 @@ abstract contract FeeDistributor is Ownable {
 
     /**
      * Allows the $FLAY token governance to set the global protocol fee.
-     *
+     * 允许$FLAY代币治理设置全局协议费用。
      * @param _protocol New protocol fee
      */
     function setProtocolFeeDistribution(uint24 _protocol) public {
@@ -349,7 +349,7 @@ abstract contract FeeDistributor is Ownable {
 
     /**
      * Allows the governing contract to make pool specific changes to the fees.
-     *
+     * 允许治理合同对池特定费用进行更改。
      * @param _poolId The PoolId being updated
      * @param _feeDistribution The new FeeDistribution value
      */
@@ -363,9 +363,9 @@ abstract contract FeeDistributor is Ownable {
 
     /**
      * Internally validates FeeDistribution structs to ensure they are valid.
-     *
+     * 内部验证FeeDistribution结构体以确保它们有效。
      * @dev If the struct is not valid, then the call will be reverted.
-     *
+     * 如果结构体无效，则调用将被还原。
      * @param _feeDistribution The FeeDistribution to be validated
      */
     function _validateFeeDistribution(FeeDistribution memory _feeDistribution) internal pure {
@@ -387,7 +387,7 @@ abstract contract FeeDistributor is Ownable {
 
     /**
      * Allows an owner to update the {IFeeCalculator} used to determine the swap fee.
-     *
+     * 允许所有者更新用于确定交换费用的{IFeeCalculator}。
      * @param _feeCalculator The new {IFeeCalculator} to use
      */
     function setFeeCalculator(IFeeCalculator _feeCalculator) public onlyOwner {
@@ -398,7 +398,7 @@ abstract contract FeeDistributor is Ownable {
     /**
      * Allows an owner to update the {IFeeCalculator} used during FairLaunch to determine the
      * swap fee.
-     *
+     * 允许所有者更新用于在FairLaunch期间确定交换费用的{IFeeCalculator}。
      * @param _feeCalculator The new {IFeeCalculator} to use
      */
     function setFairLaunchFeeCalculator(IFeeCalculator _feeCalculator) public onlyOwner {
@@ -409,7 +409,7 @@ abstract contract FeeDistributor is Ownable {
     /**
      * Gets the distribution for a pool by checking to see if a pool has it's own FeeDistribution. If
      * it does then this is used, but if it isn't then it will fallback on the global FeeDistribution.
-     *
+     * 获取池的分配，通过检查池是否有自己的FeeDistribution。如果有，则使用，如果没有，则回退到全局FeeDistribution。
      * @param _poolId The PoolId being updated
      *
      * @return feeDistribution_ The FeeDistribution applied to the pool
@@ -421,11 +421,11 @@ abstract contract FeeDistributor is Ownable {
     /**
      * Gets the {IFeeCalculator} contract that should be used based on which are set, and if the
      * pool is currently in FairLaunch or not.
-     *
+     * 获取应该使用的{IFeeCalculator}合同，基于哪个被设置，以及池当前是否在FairLaunch。
      * @dev This could return a zero address if no fee calculators have been set
-     *
+     * 如果没有任何费用计算器被设置，则可能返回一个零地址。
      * @param _isFairLaunch If the pool is currently in FairLaunch
-     *
+     * 如果池当前在FairLaunch
      * @return IFeeCalculator The IFeeCalculator to use
      */
     function getFeeCalculator(bool _isFairLaunch) public view returns (IFeeCalculator) {
@@ -438,7 +438,7 @@ abstract contract FeeDistributor is Ownable {
 
     /**
      * Initializes both the Fair Launch and Standard {IFeeCalculator} flaunching parameters for a pool.
-     *
+     * 初始化池的公平启动和标准{IFeeCalculator} flaunching参数。
      * @param _poolId The PoolId being updated
      * @param _feeCalculatorParams The parameters to pass to the fee calculators
      */
@@ -462,6 +462,7 @@ abstract contract FeeDistributor is Ownable {
 
     /**
      * Allows the contract to receive ETH when withdrawn from the flETH token.
+     * 允许合同接收ETH，当从flETH代币中提取时。
      */
     receive () external payable {}
 
