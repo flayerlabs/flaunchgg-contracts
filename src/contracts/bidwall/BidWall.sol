@@ -305,7 +305,7 @@ contract BidWall is AccessControl, Ownable {
 
     /**
      * Retrieves the treasury address for a given memecoin.
-     *
+     * 获取给定memecoin的 treasury 地址。
      * @param _poolKey The {PoolKey} that we are finding the treasury for
      * @param _memecoin The address of the memecoin
      *
@@ -317,7 +317,7 @@ contract BidWall is AccessControl, Ownable {
 
     /**
      * Retrieves the creator address for a given memecoin.
-     *
+     * 获取给定memecoin的 creator 地址。
      * @param _poolKey The {PoolKey} that we are finding the creator for
      * @param _memecoin The address of the memecoin
      *
@@ -329,12 +329,12 @@ contract BidWall is AccessControl, Ownable {
 
     /**
      * Allows the BidWall to be enabled or disabled for the {PoolKey}.
-     *
+     * 允许BidWall为{PoolKey}启用或禁用。
      * If disabled, future swap fees will be transferred directly to the respective
      * {MemecoinTreasury} address instead of the BidWall.
-     *
+     * 如果禁用，未来的交换费用将直接转移到相应的{MemecoinTreasury}地址，而不是BidWall。
      * @dev This can only be called by the creator of the memecoin.
-     *
+     * 调用者只能是memecoin的创建者。
      * @param _key The PoolKey that is being updated
      * @param _disable If the BidWall is being disabled (true) or enabled (false)
      */
@@ -362,7 +362,7 @@ contract BidWall is AccessControl, Ownable {
     /**
      * Allows the memecoin creator to close the BidWall and distribute any fees held in the BidWall
      * to the treasury address.
-     *
+     * 允许memecoin创建者关闭BidWall，并将BidWall中持有的任何费用分配到treasury地址。
      * This call will have been routed in the following way:
      * ```
      * BidWall.disable -> PositionManager.closeBidWall -> PositionManager.unlockCallback -> BidWall.closeBidwall
@@ -427,7 +427,7 @@ contract BidWall is AccessControl, Ownable {
 
     /**
      * Retrieves the current position held by the BidWall.
-     *
+     * 获取BidWall当前持有的位置。
      * @param _poolId The `PoolId` to check the {BidWall} position of
      *
      * @return amount0_ The {BidWall} token0 position
@@ -468,7 +468,7 @@ contract BidWall is AccessControl, Ownable {
 
     /**
      * Allows the threshold for the swap fee to be updated.
-     *
+     * 允许更新交换费用的阈值。
      * @param swapFeeThreshold The new threshold to set
      */
     function setSwapFeeThreshold(uint swapFeeThreshold) external onlyOwner {
@@ -478,7 +478,7 @@ contract BidWall is AccessControl, Ownable {
 
     /**
      * Allows the threshold for a BidWall to be deemed stale to be updated.
-     *
+     * 允许更新BidWall被视为过期的阈值。
      * @param _staleTimeWindow The new stale time window to set
      */
     function setStaleTimeWindow(uint _staleTimeWindow) external onlyOwner {
@@ -489,7 +489,7 @@ contract BidWall is AccessControl, Ownable {
     /**
      * Adds liquidity to our BidWall position. We calculate the tick to be adjacent to the current
      * tick of the pool into a single tick spaced range.
-     *
+     * 添加流动性到我们的BidWall位置。我们计算一个相邻的tick，范围为一个tick间隔。
      * @param _key The {PoolKey} that is being modified
      * @param _nativeIsZero If our native token is `currency0`
      * @param _currentTick The current tick for the pool
@@ -551,7 +551,7 @@ contract BidWall is AccessControl, Ownable {
 
     /**
      * Removes liquidity from our BidWall position.
-     *
+     * 从我们的BidWall位置移除流动性。
      * @param _key The {PoolKey} that is being modified
      * @param _nativeIsZero If our native token is `currency0`
      * @param _tickLower The lower tick of our BidWall position
@@ -596,7 +596,7 @@ contract BidWall is AccessControl, Ownable {
      * This function will only be called by other functions via the PositionManager, which will already
      * hold the Uniswap V4 PoolManager key. It is for this reason we can interact openly with the
      * Uniswap V4 protocol without requiring a separate callback.
-     *
+     * 这个函数只能通过PositionManager调用，它已经持有Uniswap V4 PoolManager key。因此，我们可以公开与Uniswap V4协议交互，而不需要单独的回调。
      * @param _poolKey The {PoolKey} that is being modified
      * @param _tickLower The lower tick of our BidWall position
      * @param _tickUpper The upper tick of our BidWall position
@@ -640,9 +640,9 @@ contract BidWall is AccessControl, Ownable {
      * Defines our swap fee thresholds that must be crossed to provide fees. Each time
      * that we hit a set `cumulativeSwapFees` amount, we release a threshold of fees into
      * the bid wall.
-     *
+     * 定义我们的交换费用阈值，必须跨越才能提供费用。每次我们达到一个设置的`cumulativeSwapFees`数量时，我们释放一个阈值的费用到BidWall。
      * For this fixed threshold, this will just return the value set in `setSwapFeeThreshold`.
-     *
+     * 对于这个固定的阈值，这只会返回在`setSwapFeeThreshold`中设置的值。
      * @return uint The swap fee threshold
      */
     function _getSwapFeeThreshold(uint) internal virtual view returns (uint) {
@@ -651,7 +651,7 @@ contract BidWall is AccessControl, Ownable {
 
     /**
      * Override to return true to make `_initializeOwner` prevent double-initialization.
-     *
+     * 重写以返回true，使`_initializeOwner`防止双重初始化。
      * @return bool Set to `true` to prevent owner being reinitialized.
      */
     function _guardInitializeOwner() internal pure override virtual returns (bool) {
@@ -660,7 +660,8 @@ contract BidWall is AccessControl, Ownable {
 
     /**
      * Ensures that only a {PositionManager} can call the function.
-     */
+     * 确保只有{PositionManager}可以调用函数。
+     */ 
     modifier onlyPositionManager {
         if (!hasRole(ProtocolRoles.POSITION_MANAGER, msg.sender)) revert NotPositionManager();
         _;
