@@ -21,12 +21,17 @@ contract AnyMarketCappedPriceV3 is MarketCappedPriceV3 {
      * The struct of data that should be passed from the flaunching flow to define the
      * desired market cap when a token is flaunching.
      *
+     * @dev The tokenSupply should be provided in the decimal accuracy of the token on Base,
+     * with the amount held on the source chain's token.
+     *
      * @member usdcMarketCap The USDC price of the token market cap
      * @member memecoin The address of the memecoin being flaunched
+     * @member tokenSupply An optional override for the default token total supply
      */
     struct AnyMarketCappedPriceParams {
         uint usdcMarketCap;
         address memecoin;
+        uint tokenSupply;
     }
 
     /**
@@ -59,10 +64,34 @@ contract AnyMarketCappedPriceV3 is MarketCappedPriceV3 {
      * @return sqrtPriceX96_ The `sqrtPriceX96` value
      */
     function getSqrtPriceX96(address /* _sender */, bool _flipped, bytes calldata _initialPriceParams) public view override returns (uint160 sqrtPriceX96_) {
-        (AnyMarketCappedPriceParams memory params) = abi.decode(_initialPriceParams, (AnyMarketCappedPriceParams));
+        uint totalSupply;
 
-        uint totalSupply = IERC20(params.memecoin).totalSupply();
+        // This initial price contract needs to support the initial price parameters passing both the tokenSupply and
+        // also excluding the tokenSupply. When decoding the data, if it doesn't exist, then it will revert so we will
+        // need to try / catch.
+        try this.decodeData(_initialPriceParams) returns (AnyMarketCappedPriceParams memory params) {
+            // If we have a token supply override, then use it, otherwise use the total supply of the memecoin
+            totalSupply = params.tokenSupply > 0 ? params.tokenSupply : IERC20(params.memecoin).totalSupply();
+        } catch {
+            // For our legacy approach, get the memecoin address and query the `totalSupply()` from the ERC20 directly
+            (, address memecoin) = abi.decode(_initialPriceParams, (uint, address));
+            totalSupply = IERC20(memecoin).totalSupply();
+        }
 
         return _calculateSqrtPriceX96(getMarketCap(_initialPriceParams), totalSupply, !_flipped);
     }
+
+    /**
+     * Decodes the initial price parameters into the `AnyMarketCappedPriceParams` struct.
+     *
+     * @dev This allows for us to make the call in try / catch by exposing it externally.
+     *
+     * @param _data The initial price parameters
+     *
+     * @return The `AnyMarketCappedPriceParams` struct
+     */
+    function decodeData(bytes calldata _data) public pure returns (AnyMarketCappedPriceParams memory) {
+        return abi.decode(_data, (AnyMarketCappedPriceParams));
+    }
+
 }

@@ -313,7 +313,8 @@ contract FlaunchZap {
      * to the defined Treasury Manager contract.
      *
      * @dev If the manager is an approved implementation, then it's instance will be deployed. Otherwise
-     * the flaunch token will be transferred directly to the manager.
+     * the flaunch token will _try_ to deposit the token, but fallback to transferring directly to the
+     * manager if the deposit fails.
      *
      * @param _memecoin The address of the flaunched ERC20
      * @param _creator The original creator of the ERC721
@@ -329,7 +330,14 @@ contract FlaunchZap {
         // Get the token ID of the flaunch token
         uint tokenId = flaunchContract.tokenId(_memecoin);
 
-        // Send the flaunch token to the manager
+        // Define our FlaunchToken
+        ITreasuryManager.FlaunchToken memory flaunchToken = ITreasuryManager.FlaunchToken({
+            flaunch: flaunchContract,
+            tokenId: tokenId
+        });
+
+        // If the manager address is an approved implementation, then we will deploy a new manager from the implementation
+        // and then deposit the Flaunch Token into the manager.
         if (treasuryManagerFactory.approvedManagerImplementation(_treasuryManagerParams.manager)) {
             // If it is a valid manager implementation, deploy a new instance
             address initialOwner = _treasuryManagerParams.permissions == address(0) ? _creator : address(this);
@@ -339,14 +347,12 @@ contract FlaunchZap {
                 _data: _treasuryManagerParams.initializeData
             });
 
-            // Approve the manager to pull the flaunch token during initialization
+            // Approve the deployed manager to pull the flaunch token during deposit
             flaunchContract.approve(deployedManager_, tokenId);
 
+            // Deposit our FlaunchToken into the manager
             ITreasuryManager(deployedManager_).deposit({
-                _flaunchToken: ITreasuryManager.FlaunchToken({
-                    flaunch: flaunchContract,
-                    tokenId: tokenId
-                }),
+                _flaunchToken: flaunchToken,
                 _creator: _creator,
                 _data: _treasuryManagerParams.depositData
             });
@@ -358,23 +364,42 @@ contract FlaunchZap {
                 // transfer ownership to the creator
                 ITreasuryManager(deployedManager_).transferManagerOwnership(_creator);
             }
-        } else if (treasuryManagerFactory.managerImplementation(_treasuryManagerParams.manager) != address(0)) {
-            // Approve the manager to pull the flaunch token during initialization
+        }
+        // If the manager address was previously deployed via the {TreasuryManagerFactory} from an approved implementation, then we
+        // can deposit the Flaunch Token into the manager.
+        else if (treasuryManagerFactory.managerImplementation(_treasuryManagerParams.manager) != address(0)) {
+            // Approve the manager to pull the flaunch token during deposit
             flaunchContract.approve(_treasuryManagerParams.manager, tokenId);
 
-            ITreasuryManager(_treasuryManagerParams.manager).deposit({
-                _flaunchToken: ITreasuryManager.FlaunchToken({
-                    flaunch: flaunchContract,
-                    tokenId: tokenId
-                }),
+            // Deposit our FlaunchToken into the manager
+            ITreasuryManager(deployedManager_).deposit({
+                _flaunchToken: flaunchToken,
                 _creator: _creator,
                 _data: _treasuryManagerParams.depositData
             });
-        } else {
-            // If it's not a valid manager implementation, transfer the flaunch token directly
-            // to the manager contract address specified.
+
             deployedManager_ = _treasuryManagerParams.manager;
-            flaunchContract.transferFrom(address(this), deployedManager_, tokenId);
+        }
+        // If the address is not known to the {TreasuryManagerFactory}, then we can attempt to deposit it, and then fallback to
+        // transferring directly to the manager contract address specified.
+        else {
+            // Approve the manager to pull the flaunch token during deposit
+            flaunchContract.approve(_treasuryManagerParams.manager, tokenId);
+
+            // Try to deposit the Flaunch Token into the manager. If this function is not supported by the external manager, then
+            // we will fallback to a direct transfer.
+            try ITreasuryManager(_treasuryManagerParams.manager).deposit(flaunchToken, _creator, _treasuryManagerParams.depositData) {
+                // ..
+            } catch {}
+
+            // If deposit fails, fallback to direct transfer. We cannot put this in the `catch`, as we could hit the `fallback` function
+            // in the manager contract.
+            if (flaunchContract.ownerOf(tokenId) == address(this)) {
+                flaunchContract.transferFrom(address(this), _treasuryManagerParams.manager, tokenId);
+            }
+
+            // Set the deployed manager to the manager address specified
+            deployedManager_ = _treasuryManagerParams.manager;
         }
     }
 

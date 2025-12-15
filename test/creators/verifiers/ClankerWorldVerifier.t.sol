@@ -27,7 +27,8 @@ contract ClankerWorldVerifierTest is Test {
         importer = new TokenImporter(ANY_POSITION_MANAGER_ADDRESS);
 
         // Register the verifier
-        verifier = new ClankerWorldVerifier(CLANKER_ADDRESS);
+        verifier = new ClankerWorldVerifier();
+        verifier.setClankerFactory(CLANKER_ADDRESS, true);
         
         // Add the verifier to the importer
         vm.startPrank(anyPositionManager.owner());

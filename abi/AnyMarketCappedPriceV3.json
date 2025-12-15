@@ -61,6 +61,42 @@
     },
     {
       "type": "function",
+      "name": "decodeData",
+      "inputs": [
+        {
+          "name": "_data",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct AnyMarketCappedPriceV3.AnyMarketCappedPriceParams",
+          "components": [
+            {
+              "name": "usdcMarketCap",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "memecoin",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "tokenSupply",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "function",
       "name": "ethToken",
       "inputs": [],
       "outputs": [

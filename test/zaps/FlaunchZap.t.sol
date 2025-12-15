@@ -10,6 +10,7 @@ import {FlaunchZap} from '@flaunch/zaps/FlaunchZap.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
 import {FairLaunch} from '@flaunch/hooks/FairLaunch.sol';
 import {TreasuryManagerMock} from 'test/mocks/TreasuryManagerMock.sol';
+import {CompatibleManagerMock, IncompatibleManagerMock} from 'test/mocks/ManagerMock.sol';
 import {TreasuryManagerFactory} from '@flaunch/treasury/managers/TreasuryManagerFactory.sol';
 import {TrustedSignerFeeCalculator} from '@flaunch/fees/TrustedSignerFeeCalculator.sol';
 import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
@@ -87,6 +88,15 @@ contract FlaunchZapTest is FlaunchTest {
         uint _whitelistMaxTokens,
         bool isClosedPermissions
     ) public {
+        // Ensure that the manager is nonzero and is a contract address to avoid `address is not a contract` reverts
+        if (_manager != address(0)) {
+            uint32 size;
+            assembly { size := extcodesize(_manager) }
+            if (size == 0) {
+                _manager = address(0);
+            }
+        }
+
         FuzzParams memory params = FuzzParams({
             initialTokenFairLaunch: _initialTokenFairLaunch,
             premineAmount: _premineAmount,
@@ -339,6 +349,7 @@ contract FlaunchZapTest is FlaunchTest {
 
     function test_deployAndInitializeManagerWithPermissions() public {
         address permissionsContract = address(0x789);
+
         // Deploy a mocked manager implementation
         address managerImplementation = address(new TreasuryManagerMock(address(treasuryManagerFactory), address(feeEscrowRegistry)));
         
@@ -346,7 +357,7 @@ contract FlaunchZapTest is FlaunchTest {
 
         // We know the address in advance for this test, so we can assert the expected value
         vm.expectEmit();
-        emit TreasuryManagerFactory.ManagerDeployed(0x269C4753e15E47d7CaD8B230ed19cFff21f29D51, managerImplementation);
+        emit TreasuryManagerFactory.ManagerDeployed(0x514dd0Bcaf5994Ef889f482B79d39D18B6E4363F, managerImplementation);
 
         // Deploy and initialize the manager with permissions
         address payable _manager = flaunchZap.deployAndInitializeManager(
@@ -366,6 +377,120 @@ contract FlaunchZapTest is FlaunchTest {
         
         // Verify permissions were set correctly
         assertEq(address(manager.permissions()), permissionsContract);
+    }
+
+    function test_CanFlaunchToUnknownManagerThatSupportsDeposit() public {
+        // Setup test environment
+        _setupTestEnvironment();
+        
+        // Deploy a compatible manager that implements ITreasuryManager
+        CompatibleManagerMock compatibleManager = new CompatibleManagerMock(
+            address(this), // owner
+            address(0) // feeEscrowRegistry (mock)
+        );
+        
+        // Flaunch with the compatible manager
+        (address memecoin_, uint ethSpent_, address deployedManager_) = flaunchZap.flaunch({
+            _flaunchParams: PositionManager.FlaunchParams({
+                name: 'FlaunchZap',
+                symbol: 'ZAP',
+                tokenUri: 'ipfs://123',
+                initialTokenFairLaunch: 0,
+                fairLaunchDuration: 30 minutes,
+                premineAmount: 0,
+                creator: address(this),
+                creatorFeeAllocation: 80_00,
+                flaunchAt: block.timestamp,
+                initialPriceParams: abi.encode(1000e6),
+                feeCalculatorParams: abi.encode('')
+
+            }),
+            _trustedFeeSigner: address(0),
+            _premineSwapHookData: '',
+            _whitelistParams: FlaunchZap.WhitelistParams({
+                merkleRoot: '',
+                merkleIPFSHash: '',
+                maxTokens: 0
+            }),
+            _airdropParams: FlaunchZap.AirdropParams({
+                airdropIndex: 0,
+                airdropAmount: 0,
+                airdropEndTime: 0,
+                merkleRoot: '',
+                merkleIPFSHash: ''
+            }),
+            _treasuryManagerParams: FlaunchZap.TreasuryManagerParams({
+                manager: address(compatibleManager),
+                permissions: address(0),
+                initializeData: '',
+                depositData: abi.encode('test deposit data')
+            })
+        });
+        
+        // Verify the flaunch was successful
+        assertTrue(memecoin_ != address(0), 'Memecoin should be deployed');
+        assertEq(deployedManager_, address(compatibleManager), 'Deployed manager should be the compatible manager');
+        
+        // Verify the manager received the flaunch token via deposit
+        uint tokenId = flaunch.tokenId(memecoin_);
+        assertEq(flaunch.ownerOf(tokenId), address(compatibleManager), 'Manager should own the flaunch token');
+        
+        // Verify the deposit data was stored
+        bytes memory storedData = compatibleManager.lastDepositData();
+        assertEq(keccak256(storedData), keccak256(abi.encode('test deposit data')), 'Manager should store deposit data');
+    }
+
+    function test_CanFlaunchToUnknownManagerThatDoesNotSupportDeposit() public {
+        // Setup test environment
+        _setupTestEnvironment();
+        
+        // Deploy an incompatible manager that does NOT implement ITreasuryManager
+        IncompatibleManagerMock incompatibleManager = new IncompatibleManagerMock(address(this));
+        
+        // Flaunch with the incompatible manager
+        (address memecoin_, uint ethSpent_, address deployedManager_) = flaunchZap.flaunch({
+            _flaunchParams: PositionManager.FlaunchParams({
+                name: 'FlaunchZap',
+                symbol: 'ZAP',
+                tokenUri: 'ipfs://123',
+                initialTokenFairLaunch: 0,
+                fairLaunchDuration: 30 minutes,
+                premineAmount: 0,
+                creator: address(this),
+                creatorFeeAllocation: 80_00,
+                flaunchAt: block.timestamp,
+                initialPriceParams: abi.encode(1000e6),
+                feeCalculatorParams: abi.encode('')
+            }),
+            _trustedFeeSigner: address(0),
+            _premineSwapHookData: '',
+            _whitelistParams: FlaunchZap.WhitelistParams({
+                merkleRoot: '',
+                merkleIPFSHash: '',
+                maxTokens: 0
+            }),
+            _airdropParams: FlaunchZap.AirdropParams({
+                airdropIndex: 0,
+                airdropAmount: 0,
+                airdropEndTime: 0,
+                merkleRoot: '',
+                merkleIPFSHash: ''
+            }),
+            _treasuryManagerParams: FlaunchZap.TreasuryManagerParams({
+                manager: address(incompatibleManager),
+                permissions: address(0),
+                initializeData: '',
+                depositData: abi.encode('this should not work')
+            })
+        });
+        
+        // Verify the flaunch was successful
+        assertTrue(memecoin_ != address(0), 'Memecoin should be deployed');
+        assertEq(deployedManager_, address(incompatibleManager), 'Deployed manager should be the incompatible manager');
+        
+        // Verify the manager received the flaunch token via direct transfer (fallback)
+        uint tokenId = flaunch.tokenId(memecoin_);
+        assertEq(flaunch.ownerOf(tokenId), address(incompatibleManager), 'Manager should own the flaunch token via direct transfer');
     }
 
     function test_CanFlaunchWithTrustedFeeSigner(

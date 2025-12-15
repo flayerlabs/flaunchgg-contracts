@@ -68,7 +68,7 @@ contract TokenImporter is Ownable {
             revert InvalidMemecoin();
         }
 
-        _initialize(_memecoin, _creatorFeeAllocation, _initialMarketCap, verifier);
+        _initialize(_memecoin, _creatorFeeAllocation, abi.encode(_initialMarketCap, _memecoin), verifier);
     }
 
     /**
@@ -95,7 +95,48 @@ contract TokenImporter is Ownable {
             revert InvalidMemecoin();
         }
 
-        _initialize(_memecoin, _creatorFeeAllocation, _initialMarketCap, _verifier);
+        _initialize(_memecoin, _creatorFeeAllocation, abi.encode(_initialMarketCap, _memecoin), _verifier);
+    }
+
+    /**
+     * Initializes a non-native memecoin onto Flaunch against a specific verifier with additional initial price parameters.
+     *
+     * @param _memecoin The address of the memecoin
+     * @param _creatorFeeAllocation The percentage of the fee to allocate to the creator
+     * @param _initialMarketCap The initial market cap of the memecoin in USDC
+     * @param _totalSupply The total supply of the memecoin
+     * @param _verifier The address of the verifier
+     */
+    function initialize(address _memecoin, uint24 _creatorFeeAllocation, uint _initialMarketCap, uint _totalSupply, address _verifier) public {
+        // Ensure that the memecoin is not a zero address
+        if (_memecoin == address(0)) {
+            revert ZeroAddress();
+        }
+
+        // If the verifier is a zero address, then we will need to try and verify it against all of them
+        if (_verifier == address(0)) {
+            // Set the verifier to the first verifier that validates the memecoin
+            _verifier = verifyMemecoin(_memecoin);
+
+            // If we still have a zero address, then the memecoin is invalid
+            if (_verifier == address(0)) {
+                revert InvalidMemecoin();
+            }
+        }
+        // Otherwise, we can try and verify it against the specific verifier
+        else {
+            // Ensure that the verifier is valid
+            if (!_verifiers.contains(_verifier)) {
+                revert VerifierNotAdded();
+            }
+
+            // Ensure that the memecoin is valid against the specific verifier
+            if (!IImportVerifier(_verifier).isValid(_memecoin, msg.sender)) {
+                revert InvalidMemecoin();
+            }
+        }
+
+        _initialize(_memecoin, _creatorFeeAllocation, abi.encode(_initialMarketCap, _memecoin, _totalSupply), _verifier);
     }
 
     /**
@@ -103,17 +144,17 @@ contract TokenImporter is Ownable {
      *
      * @param _memecoin The address of the memecoin
      * @param _creatorFeeAllocation The percentage of the fee to allocate to the creator
-     * @param _initialMarketCap The initial market cap of the memecoin in USDC
+     * @param _initialPriceParams The encoded parameters for the initial price
      * @param _verifier The address of the verifier
      */
-    function _initialize(address _memecoin, uint24 _creatorFeeAllocation, uint _initialMarketCap, address _verifier) internal {
+    function _initialize(address _memecoin, uint24 _creatorFeeAllocation, bytes memory _initialPriceParams, address _verifier) internal {
         // Flaunch our token into the AnyPositionManager
         anyPositionManager.flaunch(
             AnyPositionManager.FlaunchParams({
                 memecoin: _memecoin,
                 creator: msg.sender,
                 creatorFeeAllocation: _creatorFeeAllocation,
-                initialPriceParams: abi.encode(_initialMarketCap, _memecoin),
+                initialPriceParams: _initialPriceParams,
                 feeCalculatorParams: abi.encode('')
             })
         );
