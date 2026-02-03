@@ -80,13 +80,15 @@ const txHash = await sdk.readWriteFlaunchZap.flaunch({
   name: "My Token",
   symbol: "TOKEN",
   tokenUri: "ipfs://QmYourImageHash",
-  fairLaunchPercent: 0,           // Deprecated - must be 0
-  fairLaunchDuration: 0,          // Deprecated - must be 0  
+  fairLaunchPercent: 0,           // SDK requires 0 (fair launch via direct contract)
+  fairLaunchDuration: 0,          // SDK requires 0 (fair launch via direct contract)
   initialMarketCapUSD: 10000,     // $10k starting mcap
   creator: "0xYourAddress",
   creatorFeeAllocationPercent: 20,
 });
 ```
+
+**Note:** The SDK currently requires fair launch parameters to be 0. For tokens with fair launch, use the protocol contracts directly.
 
 ### Launch with Split Manager
 

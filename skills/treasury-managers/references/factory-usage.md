@@ -19,8 +19,7 @@ The `TreasuryManagerFactory` deploys and initializes manager contracts.
 function deployAndInitializeManager(
     address _managerImplementation,
     address _owner,
-    bytes calldata _data,
-    address _permissions
+    bytes calldata _data
 ) external returns (address payable manager_)
 ```
 
@@ -31,7 +30,8 @@ function deployAndInitializeManager(
 | `_managerImplementation` | Address of the manager implementation contract |
 | `_owner` | Address that will own the deployed manager |
 | `_data` | ABI-encoded initialization parameters |
-| `_permissions` | Permissions contract (or zero address for open) |
+
+**Note:** Permissions are configured separately after deployment via `manager.setPermissions(permissionsContract)`.
 
 ---
 
@@ -43,15 +43,24 @@ function deployAndInitializeManager(
 import {AddressFeeSplitManager} from "./managers/AddressFeeSplitManager.sol";
 import {ITreasuryManagerFactory} from "../interfaces/ITreasuryManagerFactory.sol";
 
+// Build recipient shares array
+AddressFeeSplitManager.RecipientShare[] memory shares =
+    new AddressFeeSplitManager.RecipientShare[](2);
+shares[0] = AddressFeeSplitManager.RecipientShare({
+    recipient: addr1,
+    share: 50_00000   // 50% of split share
+});
+shares[1] = AddressFeeSplitManager.RecipientShare({
+    recipient: addr2,
+    share: 50_00000   // 50% of split share
+});
+
 // Prepare init data
 bytes memory initData = abi.encode(
     AddressFeeSplitManager.InitializeParams({
         creatorShare: 10_00000,
         ownerShare: 5_00000,
-        recipientShares: [
-            RecipientShare({ recipient: addr1, share: 42_50000 }),
-            RecipientShare({ recipient: addr2, share: 42_50000 })
-        ]
+        recipientShares: shares
     })
 );
 
@@ -59,9 +68,11 @@ bytes memory initData = abi.encode(
 address manager = treasuryManagerFactory.deployAndInitializeManager(
     addressFeeSplitManagerImpl,  // Implementation address
     msg.sender,                   // Owner
-    initData,                     // Encoded params
-    address(0)                    // Open permissions
+    initData                      // Encoded params
 );
+
+// Optionally configure permissions after deployment
+// ITreasuryManager(manager).setPermissions(permissionsContract);
 ```
 
 ### StakingManager
@@ -82,8 +93,7 @@ bytes memory initData = abi.encode(
 address manager = treasuryManagerFactory.deployAndInitializeManager(
     stakingManagerImpl,
     msg.sender,
-    initData,
-    address(0)
+    initData
 );
 ```
 
@@ -164,13 +174,18 @@ const txHash = await walletClient.writeContract({
 
 ## Permissions
 
-The `_permissions` parameter controls who can deposit tokens into the manager:
+Permissions are configured on the deployed manager via `setPermissions()`:
 
-| Value | Behavior |
-|-------|----------|
+```solidity
+// After deploying manager
+ITreasuryManager(manager).setPermissions(permissionsContract);
+```
+
+| Permission Contract | Behavior |
+|---------------------|----------|
 | `address(0)` | Open - anyone can deposit |
-| `Closed` contract | Only owner can deposit |
-| `Whitelisted` contract | Only whitelisted addresses |
+| `Closed` | Only manager owner can deposit |
+| `Whitelisted` | Only whitelisted addresses can deposit |
 
 ### Permission Contracts
 
@@ -180,6 +195,9 @@ import {Closed} from "./permissions/Closed.sol";
 
 // Whitelisted - specific addresses
 import {Whitelisted} from "./permissions/Whitelisted.sol";
+
+// Example: Set closed permissions
+manager.setPermissions(address(closedPermissions));
 ```
 
 ---

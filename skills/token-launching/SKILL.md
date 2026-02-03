@@ -132,8 +132,8 @@ const txHash = await sdk.readWriteFlaunchZap.flaunch({
   name: "SDK Token",
   symbol: "SDKTKN",
   tokenUri: "ipfs://QmYourImageHash...",
-  fairLaunchPercent: 0,           // Deprecated - must be 0
-  fairLaunchDuration: 0,          // Deprecated - must be 0
+  fairLaunchPercent: 0,           // SDK requires 0
+  fairLaunchDuration: 0,          // SDK requires 0
   initialMarketCapUSD: 10000,     // $10k starting mcap
   creator: "0xYourAddress",
   creatorFeeAllocationPercent: 20, // 20% of trading fees
@@ -154,8 +154,8 @@ See [references/sdk-usage.md](./references/sdk-usage.md) for advanced SDK featur
 |-----------|---------|-------------|
 | `initialMarketCapUSD` | 10000 | Starting market cap in USD |
 | `creatorFeeAllocationPercent` | 20 | % of BidWall fees you receive |
-| `fairLaunchPercent` | 0 | Deprecated - must be 0 |
-| `fairLaunchDuration` | 0 | Deprecated - must be 0 |
+| `fairLaunchPercent` | 0 | SDK requires 0 (protocol supports fair launch) |
+| `fairLaunchDuration` | 0 | SDK requires 0 (protocol supports fair launch) |
 
 ---
 

@@ -43,14 +43,20 @@ IPFS URI containing token metadata (image, description).
 - **Example:** `"ipfs://QmX7UbPKJ7Drci3y6p6E8oi5TpUiG7NH3qSzcohPX9Xkvo"`
 
 ### initialTokenFairLaunch
-**DEPRECATED** - Must be set to 0.
+Tokens allocated for fair launch phase (optional).
 - **Type:** `uint256`
-- **Value:** `0`
+- **Example:** `10e27` = 10% of total supply
+- **Default:** `0` (no fair launch)
+
+**Note:** The SDK currently requires this to be 0. For fair launch functionality, use the protocol contracts directly.
 
 ### fairLaunchDuration
-**DEPRECATED** - Must be set to 0.
+Duration of fair launch in seconds (optional).
 - **Type:** `uint256`
-- **Value:** `0`
+- **Example:** `86400` = 24 hours
+- **Default:** `0` (no fair launch)
+
+**Note:** The SDK currently requires this to be 0. For fair launch functionality, use the protocol contracts directly.
 
 ### premineAmount
 Number of tokens the creator buys at launch (in wei).

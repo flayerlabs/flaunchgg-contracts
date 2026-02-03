@@ -68,18 +68,21 @@ Split Share (85%)   → Manager-specific logic
 
 ```
 Total trading fee:        0.01 ETH
-Creator allocation (20%): 0.002 ETH
-Protocol allocation:      0.008 ETH
+Creator allocation (20%): 0.002 ETH  → Goes to Treasury Manager
+BidWall allocation (80%): 0.008 ETH  → Provides liquidity support
 
 If using AddressFeeSplitManager with:
 - creatorShare: 10%
 - ownerShare: 5%
-- recipientShares: 85% total
+- recipientShares: 100% (splitting the remaining 85%)
 
+From the 0.002 ETH creator allocation:
 Creator receives:  0.002 ETH × 10% = 0.0002 ETH
 Owner receives:    0.002 ETH × 5%  = 0.0001 ETH
-Recipients split:  0.002 ETH × 85% = 0.0017 ETH
+Recipients split:  0.002 ETH × 85% = 0.0017 ETH (divided per their shares)
 ```
+
+**Note:** `recipientShares` must sum to 100_00000 (100%). They divide whatever remains after creator and owner shares.
 
 ---
 
@@ -90,11 +93,14 @@ Fees don't go directly to managers. They accumulate in FeeEscrow contracts and a
 ### Claiming Fees
 
 ```solidity
-// From manager contract
-function claim(address recipient) external {
-    uint amount = balances(recipient);
-    require(amount > 0, "Nothing to claim");
-    // Transfer ETH to recipient
+// ITreasuryManager interface
+function claim() external;           // Claims for msg.sender
+function balances(address) view;     // Check claimable balance
+
+// Example usage
+uint claimable = manager.balances(msg.sender);
+if (claimable > 0) {
+    manager.claim();  // Claims to msg.sender
 }
 ```
 
@@ -125,11 +131,17 @@ The ERC721 NFT minted at launch represents ownership of the fee stream.
 ### Transferring Ownership
 
 ```typescript
-// Transfer NFT to new owner
+// Transfer NFT to new owner (direct ownership)
 await flaunchNFT.transferFrom(currentOwner, newOwner, tokenId);
 
-// Or deposit into manager
-await flaunchNFT.safeTransferFrom(owner, managerAddress, tokenId, depositData);
+// Or deposit into a treasury manager:
+// 1) Approve the manager to move the NFT
+await flaunchNFT.approve(managerAddress, tokenId);
+
+// 2) Call the manager's deposit function
+await treasuryManager.deposit(flaunchToken, creatorAddress, depositData);
+
+// Note: FlaunchZap can perform the deposit during launch automatically
 ```
 
 ---

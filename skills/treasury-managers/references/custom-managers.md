@@ -13,82 +13,72 @@ Two base contracts are available:
 
 ---
 
-## TreasuryManager Interface
+## TreasuryManager Base Contract
+
+The base `TreasuryManager` contract provides core functionality. Override these internal methods:
 
 ```solidity
 abstract contract TreasuryManager {
     
-    /// @notice Initialize the manager
+    /// @notice Initialize the manager (called once by factory)
     /// @param _owner Manager owner address
     /// @param _data Encoded initialization parameters
     function _initialize(address _owner, bytes calldata _data) internal virtual;
     
     /// @notice Handle token deposit
-    /// @param token The Flaunch token being deposited
-    /// @param creator Address depositing the token
-    /// @param data Additional deposit data
+    /// @param _flaunchToken The Flaunch token being deposited
+    /// @param _creator Address depositing the token
+    /// @param _data Additional deposit data
     function _deposit(
-        FlaunchToken calldata token, 
-        address creator, 
-        bytes calldata data
-    ) internal virtual;
-    
-    /// @notice Get claimable balance for recipient
-    /// @param recipient Address to check
-    /// @return Claimable amount in wei
-    function balances(address recipient) public view virtual returns (uint);
-    
-    /// @notice Check if address can claim
-    /// @param recipient Address to check
-    /// @param data Additional validation data
-    /// @return True if recipient can claim
-    function isValidRecipient(
-        address recipient, 
-        bytes memory data
-    ) public view virtual returns (bool);
-    
-    /// @notice Calculate and record claim amount
-    /// @param recipient Claiming address
-    /// @param data Additional claim data
-    /// @return Amount being claimed
-    function _captureClaim(
-        address recipient, 
-        bytes memory data
-    ) internal virtual returns (uint);
-    
-    /// @notice Send fees to recipient
-    /// @param recipient Receiving address
-    /// @param allocation Amount to send
-    /// @param data Additional dispatch data
-    function _dispatchRevenue(
-        address recipient, 
-        uint allocation, 
-        bytes memory data
+        FlaunchToken calldata _flaunchToken, 
+        address _creator, 
+        bytes calldata _data
     ) internal virtual;
 }
+```
+
+**Note:** External functions like `balances()` and `claim()` are defined on `ITreasuryManager`. Additional extension hooks are on `FeeSplitManager`.
 ```
 
 ---
 
 ## FeeSplitManager Base
 
-Extends `TreasuryManager` with pre-built split logic:
+Extends `TreasuryManager` with pre-built split logic. Override these methods for custom distribution:
 
 ```solidity
 abstract contract FeeSplitManager is TreasuryManager {
     
-    uint public creatorShare;    // 5 decimals
-    uint public ownerShare;      // 5 decimals
+    uint public constant VALID_SHARE_TOTAL = 100_00000;
     
-    /// @notice Override to define custom split recipients
-    function _getSplitRecipients() internal view virtual returns (
-        address[] memory recipients,
-        uint[] memory shares
-    );
+    /// @notice Get claimable balance for recipient
+    /// @param _recipient Address to check
+    function balances(address _recipient) public view virtual returns (uint);
     
-    /// @notice Fees are automatically split per shares
-    /// Creator and owner receive their shares first
-    /// Remaining goes to _getSplitRecipients()
+    /// @notice Get recipient's share percentage
+    /// @param _recipient Address to check
+    /// @param _data Additional context data
+    function recipientShare(address _recipient, bytes memory _data) 
+        public view virtual returns (uint);
+    
+    /// @notice Check if recipient can claim
+    /// @param _recipient Address to check
+    /// @param _data Additional validation data
+    function isValidRecipient(address _recipient, bytes memory _data) 
+        public view virtual returns (bool);
+    
+    /// @notice Calculate and record claim amount (internal)
+    /// @param _recipient Claiming address
+    /// @param _data Additional claim data
+    function _captureClaim(address _recipient, bytes memory _data) 
+        internal virtual returns (uint);
+    
+    /// @notice Send fees to recipient (internal)
+    /// @param _recipient Receiving address
+    /// @param _allocation Amount to send
+    /// @param _data Additional dispatch data
+    function _dispatchRevenue(address _recipient, uint _allocation, bytes memory _data) 
+        internal virtual;
 }
 ```
 
@@ -109,30 +99,31 @@ contract LeaderboardManager is FeeSplitManager {
     struct InitializeParams {
         uint creatorShare;
         uint ownerShare;
-        uint topSpots;           // Number of leaderboard spots
+        uint topSpots;
     }
     
     address[] public leaderboard;
     uint[] public scores;
     uint public topSpots;
     
+    // Distribution: top 3 get 50%, 30%, 20%
+    uint[3] internal distribution = [uint(50_00000), 30_00000, 20_00000];
+    
     function _initialize(address _owner, bytes calldata _data) internal override {
         InitializeParams memory params = abi.decode(_data, (InitializeParams));
         
-        creatorShare = params.creatorShare;
-        ownerShare = params.ownerShare;
+        _setShares(params.creatorShare, params.ownerShare);
         topSpots = params.topSpots;
         
         leaderboard = new address[](params.topSpots);
         scores = new uint[](params.topSpots);
     }
     
-    /// @notice Update leaderboard (called by game contract)
-    function updateScore(address player, uint score) external onlyOwner {
-        // Find position and insert
+    /// @notice Update leaderboard (only manager owner)
+    function updateScore(address player, uint score) external onlyManagerOwner {
         for (uint i = 0; i < topSpots; i++) {
             if (score > scores[i]) {
-                // Shift down
+                // Shift down and insert
                 for (uint j = topSpots - 1; j > i; j--) {
                     leaderboard[j] = leaderboard[j-1];
                     scores[j] = scores[j-1];
@@ -144,22 +135,22 @@ contract LeaderboardManager is FeeSplitManager {
         }
     }
     
-    function _getSplitRecipients() internal view override returns (
-        address[] memory recipients,
-        uint[] memory shares
-    ) {
-        recipients = new address[](topSpots);
-        shares = new uint[](topSpots);
-        
-        // Top 3 get 50%, 30%, 20% of split share
-        uint[3] memory distribution = [uint(50_00000), 30_00000, 20_00000];
-        
+    /// @notice Get recipient's share based on leaderboard position
+    function recipientShare(address _recipient, bytes memory) 
+        public view override returns (uint) 
+    {
         for (uint i = 0; i < topSpots && i < 3; i++) {
-            recipients[i] = leaderboard[i];
-            shares[i] = distribution[i];
+            if (leaderboard[i] == _recipient) {
+                return distribution[i];
+            }
         }
-        
-        return (recipients, shares);
+        return 0;
+    }
+    
+    function isValidRecipient(address _recipient, bytes memory _data) 
+        public view override returns (bool) 
+    {
+        return recipientShare(_recipient, _data) > 0;
     }
 }
 ```

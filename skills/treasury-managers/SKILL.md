@@ -23,9 +23,9 @@ Every trade on a Flaunch token generates fees that flow to the BidWall. The `cre
 Trading Fees → BidWall → Creator Fee Allocation → Treasury Manager → Distribution
 ```
 
-### Fee Tiers
+### Fee Tiers (FeeSplitManager-based)
 
-All managers support three tiers:
+Managers that extend `FeeSplitManager` (AddressFeeSplit, Staking, BuyBack, ERC721Owner) support three tiers:
 
 | Tier | Description |
 |------|-------------|
@@ -34,6 +34,8 @@ All managers support three tiers:
 | **Split Share** | Distributed per manager logic |
 
 Shares use 5 decimal places: `100_00000` = 100%
+
+**Note:** `RevenueManager` uses a different model with `protocolRecipient` and `protocolFee` instead.
 
 ---
 
@@ -138,16 +140,22 @@ BuyBackManager.InitializeParams({
 
 ## Transferring Fee Ownership
 
-The ERC721 NFT represents fee stream ownership. Transfer it to:
+The ERC721 NFT represents fee stream ownership. You can move this ownership to:
 
-1. **A manager contract** - Enable programmatic distribution
+1. **A manager contract** - Enable programmatic distribution (via `deposit`)
 2. **A multisig** - Shared control over fees
 3. **Another wallet** - Sell or delegate fee rights
 
 ```typescript
-// Transfer NFT to manager
-await nftContract.transferFrom(owner, managerAddress, tokenId);
+// Direct transfer to another wallet
+await nftContract.transferFrom(owner, newOwner, tokenId);
+
+// Deposit into a treasury manager (proper method)
+await nftContract.approve(managerAddress, tokenId);
+await treasuryManager.deposit(flaunchToken, creatorAddress, depositData);
 ```
+
+**Important:** Don't use `safeTransferFrom` directly to a manager. Managers track deposits via their `deposit()` function which handles internal accounting.
 
 ---
 

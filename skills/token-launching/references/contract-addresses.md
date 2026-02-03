@@ -1,5 +1,7 @@
 # Contract Addresses
 
+**Source:** These addresses are from the [flaunchgg-contracts releases](https://github.com/flayerlabs/flaunchgg-contracts/releases).
+
 ## Base Mainnet (v1.1.5)
 
 | Contract | Address |
