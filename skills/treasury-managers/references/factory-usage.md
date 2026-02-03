@@ -125,17 +125,18 @@ const initParams = encodeAbiParameters(
   ],
   [
     {
-      creatorShare: BigInt(10_00000),
-      ownerShare: BigInt(5_00000),
+      creatorShare: BigInt(10_00000),   // 10%
+      ownerShare: BigInt(5_00000),      // 5%
       recipientShares: [
-        { recipient: "0xAddr1...", share: BigInt(42_50000) },
-        { recipient: "0xAddr2...", share: BigInt(42_50000) },
+        // Recipients share the remaining 85%, and their shares must sum to 100%
+        { recipient: "0xAddr1...", share: BigInt(50_00000) },  // 50% of split
+        { recipient: "0xAddr2...", share: BigInt(50_00000) },  // 50% of split
       ],
     },
   ]
 );
 
-// Call factory
+// Call factory (3 arguments: implementation, owner, data)
 const txHash = await walletClient.writeContract({
   address: FACTORY_ADDRESS,
   abi: TreasuryManagerFactoryABI,
@@ -144,7 +145,6 @@ const txHash = await walletClient.writeContract({
     MANAGER_IMPL_ADDRESS,
     ownerAddress,
     initParams,
-    "0x0000000000000000000000000000000000000000",
   ],
 });
 ```

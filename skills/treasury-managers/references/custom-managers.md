@@ -165,7 +165,6 @@ Fees only claimable after a lock period:
 contract TimeLockManager is FeeSplitManager {
     
     uint public unlockTime;
-    mapping(address => uint) public pendingClaims;
     
     struct InitializeParams {
         uint creatorShare;
@@ -175,31 +174,60 @@ contract TimeLockManager is FeeSplitManager {
         uint[] shares;
     }
     
-    address[] internal _recipients;
-    uint[] internal _shares;
+    /// Track recipient shares
+    mapping(address => uint) internal _recipientShares;
+    
+    /// Track amount claimed per recipient  
+    mapping(address => uint) public amountClaimed;
     
     function _initialize(address _owner, bytes calldata _data) internal override {
         InitializeParams memory params = abi.decode(_data, (InitializeParams));
         
-        creatorShare = params.creatorShare;
-        ownerShare = params.ownerShare;
+        // Use _setShares to properly initialize creator and owner shares
+        _setShares(params.creatorShare, params.ownerShare);
         unlockTime = block.timestamp + params.lockDuration;
-        _recipients = params.recipients;
-        _shares = params.shares;
+        
+        // Store recipient shares
+        uint totalShare;
+        for (uint i; i < params.recipients.length; ++i) {
+            _recipientShares[params.recipients[i]] = params.shares[i];
+            totalShare += params.shares[i];
+        }
+        
+        // Validate shares sum to 100%
+        if (totalShare != VALID_SHARE_TOTAL) {
+            revert InvalidRecipientShareTotal(totalShare, VALID_SHARE_TOTAL);
+        }
+    }
+    
+    function recipientShare(address _recipient, bytes memory) 
+        public view override returns (uint) 
+    {
+        return _recipientShares[_recipient];
     }
     
     function isValidRecipient(
-        address recipient, 
-        bytes memory
+        address _recipient, 
+        bytes memory _data
     ) public view override returns (bool) {
-        return block.timestamp >= unlockTime && balances(recipient) > 0;
+        // Only valid if unlock time has passed and recipient has a share
+        return block.timestamp >= unlockTime && _recipientShares[_recipient] > 0;
     }
     
-    function _getSplitRecipients() internal view override returns (
-        address[] memory,
-        uint[] memory
-    ) {
-        return (_recipients, _shares);
+    function _captureClaim(address _recipient, bytes memory _data) 
+        internal override returns (uint allocation_) 
+    {
+        // Calculate allocation based on managerFees and recipient share
+        uint totalOwed = (managerFees() * _recipientShares[_recipient]) / VALID_SHARE_TOTAL;
+        allocation_ = totalOwed - amountClaimed[_recipient];
+        amountClaimed[_recipient] = totalOwed;
+    }
+    
+    function _dispatchRevenue(address _recipient, uint _allocation, bytes memory) 
+        internal override 
+    {
+        (bool success, bytes memory data) = payable(_recipient).call{value: _allocation}('');
+        if (!success) revert UnableToSendRevenue(data);
     }
 }
 ```
@@ -222,7 +250,7 @@ contract TimeLockManager is FeeSplitManager {
 |------|------------|
 | Reentrancy | Use checks-effects-interactions pattern |
 | Overflow | Use Solidity 0.8+ built-in checks |
-| Access control | Implement `onlyOwner` modifiers |
+| Access control | Implement `onlyManagerOwner` modifiers |
 | Locked funds | Ensure claim paths always exist |
 | Gas griefing | Limit loops, use pull over push |
 
