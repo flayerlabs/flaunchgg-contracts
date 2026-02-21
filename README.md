@@ -28,21 +28,22 @@ For further assistance, feel free to reach out to our team through our official 
 | Contract              | Base                                         | Base Sepolia                                 |
 |-----------------------|----------------------------------------------|----------------------------------------------|
 | FeeExemptions         | `0xfdCE459071c74b732B2dEC579Afb38Ea552C4e06` | `0xD0aa3724074727629A9794d8A06CA1B2aDb51a85` |
-| MarketCappedPrice     | `0x6575A6aF0EEACe121fD60B99d491B24357E8528B` | `0x10ea1368c41FB09296dF0bd127Ae307a56e7A16d` |
-| PositionManager       | `0x51Bba15255406Cfe7099a42183302640ba7dAFDC` | `0x9A7059cA00dA92843906Cb4bCa1D005cE848AFdC` |
-| BidWall               | `0x66681f10BA90496241A25e33380004f30Dfd8aa8` | `0xa2107050ACEf4809c88Ab744F8e667605db5ACDB` |
-| FairLaunch            | `0xCc7A4A00072ccbeEEbd999edc812C0ce498Fb63B` | `0x227Fc288aC56E169f2BfEA82e07F8635054d4136` |
-| TreasuryActionManager | `0xeC2a53F572cFD952aAA3a8359Ac54B31d0A186a4` | `0xe1cfA7B6B47A31448E27DB6d2EE98D671d852275` |
+| MarketCappedPrice     | `0xf318e170d10a1f0d9b57211e908a7f081123e7f6` | `0xe8f624a3fd5b3ae3914baac21f9fd636259f57f2` |
+| PositionManager       | `0x23321f11a6d44fd1ab790044fdfde5758c902fdc` | `0x4e7cb1e6800a7b297b38bddcecaf9ca5b6616fdc` |
+| BidWall               | `0x7f22353d1634223a802d1c1ea5308ddf5dd0ef9c` | `0x6f2fa01a05ff8b6efbfefd91a3b85aaf19265a00` |
+| FairLaunch (Deprecated) | `[Deprecated]`                               | `[Deprecated]`                               |
+| TreasuryActionManager | `0xfb5c20c4e60c9c64648dd3692437e3e313add4a4` | `0xc5299fb5c8ccad97fb74f9f346337d9e00c319ca` |
 | Notifier              | `0x75a8264b748147fdbfAE518CF37Fd3A83FC03aB7` | `0xCc4B78FBACFD16b0beFd742b163185f9671d01A6` |
 | Memecoin              | `0xF1EEeeeeECd95E9Eb2df58484ceed175AcBD945C` | `0x08D9f2512da858fB9DbEaFb62EE9F5F5a3519367` |
-| MemecoinTreasury      | `0xa327725c2DcD8077dBC49701dD7A673fFB768145` | `0x83D948aaC357EbfE0a17efE92bbE8A133C0BaE6C` |
-| Flaunch               | `0x6A53F8b799bE11a2A3264eF0bfF183dCB12d9571` | `0x7D375C9133721083DF7b7e5Cb0Ed8Fc78862dfe3` |
+| MemecoinTreasury      | `0x7397390360bd9d559d9277e60d47b99933791232` | `0x89ac06abf75752c961f6b3b44b699ec03f5f123c` |
+| Flaunch               | `0x516af52d0c629b5e378da4dc64ecb0744ce10109` | `0xe2ef58a54ee79dac0d4a130ea58b340124df9438` |
 | StaticFeeCalculator   | `0xaA27191eB96F8C9F1f50519C53e6512228f2faB9` | `0x8FCedC6bf6bd2691CA9efd9E41Ff01ef325585e0` |
 | BuyBackAction         | `0xDa4866c97E3414b920663041C680012D6Ee296bE` | `0xb480B22fE3a802526c2C2533535ddB8DA6694Aec` |
 | BurnTokensAction      | `0x8696a1F26e678D15c251f07556696b877D3382c8` | `0xe8c3A9428aA97A8Cef5DF45af7d6Af7d553dd92c` |
 | FlaunchPremineZap     | `0xeFA8267954b0740dC981a40D8E23d07116c8DfFE` | `0xb84d6cc0cC54A1a30dF07e4B869Cc4AFa7405281` |
-| ReferralEscrow        | `0xBD39c7Be6D98BD1a3e4Ad482baF99d738947fE55` | `0x0651cadC51b6a13CB3465C134A22154a2b633779` |
-| PoolSwap              | `0x4c211268cbf275637A8C235E63A26BC0E05ACA25` | `0xB8ed7Dcc436F646999C5A2C8546b9b0ED51CcD01` |
+| FlaunchZap            | `0xa9bd947751c6a6d33ccd0ef4a03c48466f24c172` | `0x25b747aeca2612b9804b5c3bb272a3daefdc6eaa` |
+| ReferralEscrow        | `0xd381f8ea57df43c57cfe6e5b19a0a4700396f28c` | `0xd3d9047cabe3346c70b510435866565176e8ce12` |
+| PoolSwap              | `0xdcf8e5e2a21e9b7e37b1b1a6612f1376723dd08e` | `0x9ef9762c55275b1ba8b6b900fa4c3a349f581014` |
 
 ### flETH Addresses
 | Contract              | Base                                         | Base Sepolia                                 |
