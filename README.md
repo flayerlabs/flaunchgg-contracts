@@ -41,7 +41,7 @@ For further assistance, feel free to reach out to our team through our official 
 | BuyBackAction         | `0xDa4866c97E3414b920663041C680012D6Ee296bE` | `0xb480B22fE3a802526c2C2533535ddB8DA6694Aec` |
 | BurnTokensAction      | `0x8696a1F26e678D15c251f07556696b877D3382c8` | `0xe8c3A9428aA97A8Cef5DF45af7d6Af7d553dd92c` |
 | FlaunchPremineZap     | `0xeFA8267954b0740dC981a40D8E23d07116c8DfFE` | `0xb84d6cc0cC54A1a30dF07e4B869Cc4AFa7405281` |
-| FlaunchZap            | `0xa9bd947751c6a6d33ccd0ef4a03c48466f24c172` | `0x25b747aeca2612b9804b5c3bb272a3daefdc6eaa` |
+| FlaunchZap            | `0x39112541720078c70164ea4deb61f0a4811910f9` | `0x25b747aeca2612b9804b5c3bb272a3daefdc6eaa` |
 | ReferralEscrow        | `0xd381f8ea57df43c57cfe6e5b19a0a4700396f28c` | `0xd3d9047cabe3346c70b510435866565176e8ce12` |
 | PoolSwap              | `0xdcf8e5e2a21e9b7e37b1b1a6612f1376723dd08e` | `0x9ef9762c55275b1ba8b6b900fa4c3a349f581014` |
 
