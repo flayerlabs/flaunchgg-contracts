@@ -7,9 +7,7 @@ import {VirtualsVerifier} from '@flaunch/creators/verifiers/VirtualsVerifier.sol
 
 import {Test} from 'forge-std/Test.sol';
 
-
 contract VirtualsVerifierTest is Test {
-
     address payable public constant ANY_POSITION_MANAGER_ADDRESS = payable(0x2aD43d0618b1d8a0CC75CF716Cf0bf64070725dC);
 
     AnyPositionManager public anyPositionManager;
@@ -18,7 +16,7 @@ contract VirtualsVerifierTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString('BASE_RPC_URL'));
-        
+
         // Register our AnyPositionManager
         anyPositionManager = AnyPositionManager(ANY_POSITION_MANAGER_ADDRESS);
 
@@ -30,7 +28,7 @@ contract VirtualsVerifierTest is Test {
 
         // Register the known Virtuals AgentToken implementations
         verifier.setAgentTokenImplementation(0x9215e9A88c94b9DCAd5B02e32Cd5CaB2A291458B, true);
-        
+
         // Add the verifier to the importer
         vm.startPrank(anyPositionManager.owner());
         anyPositionManager.approveCreator(address(importer), true);
@@ -65,10 +63,9 @@ contract VirtualsVerifierTest is Test {
     function test_CannotImportInvalidToken() public {
         // An invalid token address
         address invalidToken = address(0x123);
-        
+
         // Attempt to import the token - should revert
         vm.expectRevert(TokenImporter.InvalidMemecoin.selector);
         importer.initialize(invalidToken, 80_00, 5000e6);
     }
-
 }

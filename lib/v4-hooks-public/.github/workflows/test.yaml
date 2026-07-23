@@ -1,0 +1,45 @@
+name: test
+
+on:
+  pull_request:
+    branches: [main, master, staging, dev, feat/**, fix/**]
+  push:
+    branches: [main, master, staging, dev]
+
+env:
+  FOUNDRY_PROFILE: ${{ github.event_name == 'push' && 'ci' || 'pr' }}
+
+permissions: {}
+
+jobs:
+  forge-test:
+    strategy:
+      fail-fast: true
+
+    name: Foundry project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: bullfrogsec/bullfrog@dcde5841b19b7ef693224207a7fdec67fce604db # v0.8.3
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@82dee4ba654bd2146511f85f0d013af94670c4de # v1
+        with:
+          version: stable
+
+      - name: Run Forge build
+        run: |
+          echo Foundry profile: $FOUNDRY_PROFILE
+          forge --version
+          forge build
+          forge build --sizes src/*
+        id: build
+
+      - name: Run Forge tests
+        run: forge test --isolate -vvv
+        id: test
+        env:
+          FORGE_SNAPSHOT_CHECK: true

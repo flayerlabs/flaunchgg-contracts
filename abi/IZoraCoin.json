@@ -1,0 +1,17 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "payoutRecipient",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    }
+  ]
+}

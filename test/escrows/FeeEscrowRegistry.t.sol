@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
 
+import {PositionManager} from '@flaunch/PositionManager.sol';
 import {FeeEscrow} from '@flaunch/escrows/FeeEscrow.sol';
 import {FeeEscrowRegistry} from '@flaunch/escrows/FeeEscrowRegistry.sol';
-import {PositionManager} from '@flaunch/PositionManager.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
+import {IFeeEscrowRegistry} from '@flaunch-interfaces/IFeeEscrowRegistry.sol';
 
 /**
  * Comprehensive test suite for FeeEscrowRegistry contract
  */
 contract FeeEscrowRegistryTest is FlaunchTest {
-
     // Test contracts
     FeeEscrowRegistry public registry;
     FeeEscrow public feeEscrow1;
@@ -72,11 +72,24 @@ contract FeeEscrowRegistryTest is FlaunchTest {
     }
 
     function test_AddFeeEscrow_OwnerCanAddEscrow() public {
-        // Add first escrow
+        // Add first escrow as a non-legacy escrow
         vm.expectEmit();
-        emit FeeEscrowRegistry.FeeEscrowAdded(address(feeEscrow1), true);
-        
+        emit IFeeEscrowRegistry.FeeEscrowAdded(address(feeEscrow1), false);
+
         registry.addFeeEscrow(address(feeEscrow1), false);
+
+        // Verify escrow was added
+        address[] memory escrows = registry.feeEscrows();
+        assertEq(escrows.length, 1);
+        assertEq(escrows[0], address(feeEscrow1));
+    }
+
+    function test_AddFeeEscrow_OwnerCanAddLegacyEscrow() public {
+        // Add first escrow as a legacy escrow
+        vm.expectEmit();
+        emit IFeeEscrowRegistry.FeeEscrowAdded(address(feeEscrow1), true);
+
+        registry.addFeeEscrow(address(feeEscrow1), true);
 
         // Verify escrow was added
         address[] memory escrows = registry.feeEscrows();
@@ -104,19 +117,25 @@ contract FeeEscrowRegistryTest is FlaunchTest {
         // Verify all escrows were added
         address[] memory escrows = registry.feeEscrows();
         assertEq(escrows.length, 3);
-        
+
         // Verify all addresses are present (order may vary)
         bool found1 = false;
         bool found2 = false;
         bool found3 = false;
-        
+
         for (uint i = 0; i < escrows.length; i++) {
-            if (escrows[i] == address(feeEscrow1)) found1 = true;
-            if (escrows[i] == address(feeEscrow2)) found2 = true;
-            if (escrows[i] == address(feeEscrow3)) found3 = true;
+            if (escrows[i] == address(feeEscrow1)) {
+                found1 = true;
+            }
+            if (escrows[i] == address(feeEscrow2)) {
+                found2 = true;
+            }
+            if (escrows[i] == address(feeEscrow3)) {
+                found3 = true;
+            }
         }
-        
-        assertTrue(found1 && found2 && found3, "All escrows should be found");
+
+        assertTrue(found1 && found2 && found3, 'All escrows should be found');
     }
 
     function test_AddFeeEscrow_AddingSameEscrowTwiceDoesNotDuplicate() public {
@@ -133,11 +152,11 @@ contract FeeEscrowRegistryTest is FlaunchTest {
     function test_RemoveFeeEscrow_OwnerCanRemoveEscrow() public {
         // First add the escrow
         registry.addFeeEscrow(address(feeEscrow1), false);
-        
+
         // Then remove it
         vm.expectEmit(true, false, false, true);
-        emit FeeEscrowRegistry.FeeEscrowRemoved(address(feeEscrow1));
-        
+        emit IFeeEscrowRegistry.FeeEscrowRemoved(address(feeEscrow1));
+
         registry.removeFeeEscrow(address(feeEscrow1));
 
         // Verify escrow was removed
@@ -148,7 +167,7 @@ contract FeeEscrowRegistryTest is FlaunchTest {
     function test_RemoveFeeEscrow_NonOwnerCannotRemoveEscrow() public {
         // First add the escrow as owner
         registry.addFeeEscrow(address(feeEscrow1), false);
-        
+
         // Try to remove as non-owner
         vm.startPrank(nonOwner);
         vm.expectRevert();
@@ -182,13 +201,15 @@ contract FeeEscrowRegistryTest is FlaunchTest {
         // Verify only 2 escrows remain
         address[] memory escrows = registry.feeEscrows();
         assertEq(escrows.length, 2);
-        
+
         // Verify the removed escrow is not present
         bool found2 = false;
         for (uint i = 0; i < escrows.length; i++) {
-            if (escrows[i] == address(feeEscrow2)) found2 = true;
+            if (escrows[i] == address(feeEscrow2)) {
+                found2 = true;
+            }
         }
-        assertFalse(found2, "Removed escrow should not be found");
+        assertFalse(found2, 'Removed escrow should not be found');
     }
 
     function test_FeeEscrows_ReturnsEmptyArrayWhenNoEscrows() public {
@@ -205,19 +226,25 @@ contract FeeEscrowRegistryTest is FlaunchTest {
         // Get escrows
         address[] memory escrows = registry.feeEscrows();
         assertEq(escrows.length, 3);
-        
+
         // Verify all addresses are present
         bool found1 = false;
         bool found2 = false;
         bool found3 = false;
-        
+
         for (uint i = 0; i < escrows.length; i++) {
-            if (escrows[i] == address(feeEscrow1)) found1 = true;
-            if (escrows[i] == address(feeEscrow2)) found2 = true;
-            if (escrows[i] == address(feeEscrow3)) found3 = true;
+            if (escrows[i] == address(feeEscrow1)) {
+                found1 = true;
+            }
+            if (escrows[i] == address(feeEscrow2)) {
+                found2 = true;
+            }
+            if (escrows[i] == address(feeEscrow3)) {
+                found3 = true;
+            }
         }
-        
-        assertTrue(found1 && found2 && found3, "All escrows should be found");
+
+        assertTrue(found1 && found2 && found3, 'All escrows should be found');
     }
 
     function test_FeeEscrows_ReturnsUpdatedListAfterRemoval() public {
@@ -232,13 +259,15 @@ contract FeeEscrowRegistryTest is FlaunchTest {
         // Get updated escrows
         address[] memory escrows = registry.feeEscrows();
         assertEq(escrows.length, 2);
-        
+
         // Verify removed escrow is not present
         bool found2 = false;
         for (uint i = 0; i < escrows.length; i++) {
-            if (escrows[i] == address(feeEscrow2)) found2 = true;
+            if (escrows[i] == address(feeEscrow2)) {
+                found2 = true;
+            }
         }
-        assertFalse(found2, "Removed escrow should not be found");
+        assertFalse(found2, 'Removed escrow should not be found');
     }
 
     function test_Integration_AddRemoveAddCycle() public {
@@ -255,14 +284,17 @@ contract FeeEscrowRegistryTest is FlaunchTest {
         assertEq(registry.feeEscrows().length, 1);
     }
 
-    function _fundEscrow(FeeEscrow _escrow, uint _amount) internal {
+    function _fundEscrow(
+        FeeEscrow _escrow,
+        uint _amount
+    ) internal {
         if (_amount > 0) {
             // Mint flETH to this contract
             deal(address(flETH), address(this), _amount);
-            
+
             // Approve escrow to spend flETH
             IERC20(address(flETH)).approve(address(_escrow), _amount);
-            
+
             // Allocate fees to the escrow
             _escrow.allocateFees(testPoolId, address(this), _amount);
         }

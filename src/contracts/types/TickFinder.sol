@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-
 /**
  * A helper library that finds the next valid tick for the specified tick spacing, starting
  * from a single tick. This will allow us to round up or down to find it and also supports
@@ -12,7 +11,6 @@ pragma solidity ^0.8.26;
  * @dev This is used by `using TickFinder for int24;`
  */
 library TickFinder {
-
     /// The valid tick spacing value for the pool
     int24 internal constant TICK_SPACING = 60;
 
@@ -28,10 +26,16 @@ library TickFinder {
      *
      * return tick_ The valid tick
      */
-    function validTick(int24 _tick, bool _roundDown) internal pure returns (int24 tick_) {
+    function validTick(
+        int24 _tick,
+        bool _roundDown
+    ) internal pure returns (int24 tick_) {
         // If we have a malformed tick, then we need to bring it back within range
-        if (_tick < MIN_TICK) _tick = MIN_TICK;
-        else if (_tick > MAX_TICK) _tick = MAX_TICK;
+        if (_tick < MIN_TICK) {
+            _tick = MIN_TICK;
+        } else if (_tick > MAX_TICK) {
+            _tick = MAX_TICK;
+        }
 
         // If the tick is already valid, exit early
         if (_tick % TICK_SPACING == 0) {
@@ -48,5 +52,4 @@ library TickFinder {
             return tick_ + TICK_SPACING;
         }
     }
-
 }

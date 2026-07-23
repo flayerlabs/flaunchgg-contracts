@@ -1,0 +1,113 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "notifySubscribers",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "internalType": "PoolId"
+        },
+        {
+          "name": "_key",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        },
+        {
+          "name": "_data",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "subscribe",
+      "inputs": [
+        {
+          "name": "_subscriber",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_data",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "unsubscribe",
+      "inputs": [
+        {
+          "name": "_subscriber",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "NotifyFailed",
+      "inputs": [
+        {
+          "name": "_subscriber",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "_reason",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "Subscription",
+      "inputs": [
+        {
+          "name": "_subscriber",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "Unsubscription",
+      "inputs": [
+        {
+          "name": "_subscriber",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "SubscriptionReverted",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TooManySubscribers",
+      "inputs": []
+    }
+  ]
+}

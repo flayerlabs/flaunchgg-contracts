@@ -1,0 +1,35 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "getBeneficiaries",
+      "inputs": [
+        {
+          "name": "asset",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple[]",
+          "internalType": "struct IUniswapV4MulticurveInitializer.BeneficiaryData[]",
+          "components": [
+            {
+              "name": "beneficiary",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "shares",
+              "type": "uint96",
+              "internalType": "uint96"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    }
+  ]
+}

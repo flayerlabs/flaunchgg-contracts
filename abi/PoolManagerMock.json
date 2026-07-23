@@ -1,0 +1,27 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "take",
+      "inputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "Currency"
+        },
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    }
+  ]
+}

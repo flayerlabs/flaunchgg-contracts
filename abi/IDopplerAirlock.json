@@ -1,0 +1,75 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "getAssetData",
+      "inputs": [
+        {
+          "name": "_asset",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct IDopplerAirlock.AssetData",
+          "components": [
+            {
+              "name": "numeraire",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "timelock",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "governance",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "liquidityMigrator",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "poolInitializer",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "pool",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "migrationPool",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "numTokensToSell",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "totalSupply",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "integrator",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    }
+  ]
+}

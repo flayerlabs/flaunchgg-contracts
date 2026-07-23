@@ -1,0 +1,49 @@
+{
+  "abi": [
+    {
+      "type": "error",
+      "name": "ApproveFailed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ETHTransferFailed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "Permit2AmountOverflow",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "Permit2ApproveFailed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "Permit2Failed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "Permit2LockdownFailed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TotalSupplyQueryFailed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TransferFailed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TransferFromFailed",
+      "inputs": []
+    }
+  ]
+}

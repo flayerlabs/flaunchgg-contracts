@@ -1,0 +1,18 @@
+{
+  "name": "@uniswap/briefcase",
+  "version": "0.1.24",
+  "description": "Uniswap protocol smart contract interfaces, libraries, deployers, and more",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Uniswap/briefcase.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Uniswap/briefcase/issues"
+  },
+  "homepage": "https://github.com/Uniswap/briefcase#readme",
+  "publishConfig": {
+    "access": "public"
+  }
+}

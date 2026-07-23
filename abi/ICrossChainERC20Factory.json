@@ -1,0 +1,38 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "deploy",
+      "inputs": [
+        {
+          "name": "remoteToken",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "symbol",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "decimals",
+          "type": "uint8",
+          "internalType": "uint8"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "abi": [
+    {
+      "type": "error",
+      "name": "HookAddressNotValid",
+      "inputs": [
+        {
+          "name": "hooks",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "HookCallFailed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "HookDeltaExceedsSwapAmount",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidHookResponse",
+      "inputs": []
+    }
+  ]
+}

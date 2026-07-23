@@ -8,30 +8,15 @@ import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
+import {IDistributeAction} from '@flaunch-interfaces/IDistributeAction.sol';
 import {IFLETH} from '@flaunch-interfaces/IFLETH.sol';
 import {ITreasuryAction} from '@flaunch-interfaces/ITreasuryAction.sol';
-
 
 /**
  * Allows token0 and token1 to be distributed to token holders.
  */
-contract DistributeAction is ITreasuryAction {
-
+contract DistributeAction is IDistributeAction {
     using SafeCastLib for uint;
-
-    /**
-     * Each recipient of the distribution will have an individual struct when the action
-     * is executed.
-     *
-     * @member recipient The recipient of the distribution
-     * @member token0 If the recipient will receive currency0 (if true), or currency1 (if false)
-     * @member amount The amount of the token to distribute to the recipient
-     */
-    struct Distribution {
-        address recipient;
-        bool token0;
-        uint amount;
-    }
 
     /// The native token used by the Flaunch {PositionManager}
     Currency public immutable nativeToken;
@@ -41,7 +26,9 @@ contract DistributeAction is ITreasuryAction {
      *
      * @param _nativeToken The ERC20 native token
      */
-    constructor (address _nativeToken) {
+    constructor(
+        address _nativeToken
+    ) {
         nativeToken = Currency.wrap(_nativeToken);
     }
 
@@ -52,7 +39,10 @@ contract DistributeAction is ITreasuryAction {
      * @param _poolKey The PoolKey to execute against
      * @param _data Array of `Distribution` structs
      */
-    function execute(PoolKey memory _poolKey, bytes memory _data) external override {
+    function execute(
+        PoolKey memory _poolKey,
+        bytes memory _data
+    ) external override {
         // Unpack our distributions
         Distribution[] memory distributions = abi.decode(_data, (Distribution[]));
 
@@ -113,6 +103,5 @@ contract DistributeAction is ITreasuryAction {
     /**
      * Allows the contract to receive ETH when withdrawn from the flETH token.
      */
-    receive () external payable {}
-
+    receive() external payable {}
 }

@@ -1,0 +1,12 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+        description: Forces to replace line ending by the UNIX 'lf' character.
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: "v3.0.3"
+    hooks:
+      - id: prettier
+        name: Format non solidity files with prettier

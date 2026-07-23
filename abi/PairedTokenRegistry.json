@@ -1,0 +1,402 @@
+{
+  "abi": [
+    {
+      "type": "constructor",
+      "inputs": [
+        {
+          "name": "_protocolOwner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "approvePairedToken",
+      "inputs": [
+        {
+          "name": "_token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_newConfig",
+          "type": "tuple",
+          "internalType": "struct IPairedTokenRegistry.PairedToken",
+          "components": [
+            {
+              "name": "approved",
+              "type": "bool",
+              "internalType": "bool"
+            },
+            {
+              "name": "tokenType",
+              "type": "uint8",
+              "internalType": "enum IPairedTokenRegistry.PairedTokenType"
+            },
+            {
+              "name": "decimals",
+              "type": "uint8",
+              "internalType": "uint8"
+            },
+            {
+              "name": "underlying",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "feeEscrow",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "minDistribute",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "bidWallThreshold",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "cancelOwnershipHandover",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "completeOwnershipHandover",
+      "inputs": [
+        {
+          "name": "pendingOwner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "isApproved",
+      "inputs": [
+        {
+          "name": "_token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "owner",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "result",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "ownershipHandoverExpiresAt",
+      "inputs": [
+        {
+          "name": "pendingOwner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "result",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "renounceOwnership",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "requestOwnershipHandover",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "tokenConfig",
+      "inputs": [
+        {
+          "name": "_token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct IPairedTokenRegistry.PairedToken",
+          "components": [
+            {
+              "name": "approved",
+              "type": "bool",
+              "internalType": "bool"
+            },
+            {
+              "name": "tokenType",
+              "type": "uint8",
+              "internalType": "enum IPairedTokenRegistry.PairedTokenType"
+            },
+            {
+              "name": "decimals",
+              "type": "uint8",
+              "internalType": "uint8"
+            },
+            {
+              "name": "underlying",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "feeEscrow",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "minDistribute",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "bidWallThreshold",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "transferOwnership",
+      "inputs": [
+        {
+          "name": "newOwner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "unapprovePairedToken",
+      "inputs": [
+        {
+          "name": "_token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "OwnershipHandoverCanceled",
+      "inputs": [
+        {
+          "name": "pendingOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OwnershipHandoverRequested",
+      "inputs": [
+        {
+          "name": "pendingOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OwnershipTransferred",
+      "inputs": [
+        {
+          "name": "oldOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "newOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "PairedTokenApproved",
+      "inputs": [
+        {
+          "name": "_token",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "_config",
+          "type": "tuple",
+          "indexed": false,
+          "internalType": "struct IPairedTokenRegistry.PairedToken",
+          "components": [
+            {
+              "name": "approved",
+              "type": "bool",
+              "internalType": "bool"
+            },
+            {
+              "name": "tokenType",
+              "type": "uint8",
+              "internalType": "enum IPairedTokenRegistry.PairedTokenType"
+            },
+            {
+              "name": "decimals",
+              "type": "uint8",
+              "internalType": "uint8"
+            },
+            {
+              "name": "underlying",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "feeEscrow",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "minDistribute",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "bidWallThreshold",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "PairedTokenUnapproved",
+      "inputs": [
+        {
+          "name": "_token",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AlreadyInitialized",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "FeeEscrowTokenMismatch",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidPairedTokenConfig",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "MissingDistributionThresholds",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NewOwnerIsZeroAddress",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NoHandoverRequest",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PairedTokenNotApproved",
+      "inputs": [
+        {
+          "name": "_token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "PairedTokenZeroAddress",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "Unauthorized",
+      "inputs": []
+    }
+  ]
+}

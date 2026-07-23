@@ -6,13 +6,11 @@ import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
 import {IMemecoin} from '@flaunch-interfaces/IMemecoin.sol';
 
-
 /**
  * A helper library that finds the memecoin contract and it's associated treasury and
  * creator for a given {PoolKey}.
  */
 library MemecoinFinder {
-
     /**
      * Finds the {IMemecoin} attached to a `PoolKey` by assuming it is not the `_nativeToken`.
      *
@@ -21,12 +19,10 @@ library MemecoinFinder {
      *
      * @return The {IMemecoin} contract from the `PoolKey`
      */
-    function memecoin(PoolKey memory _key, address _nativeToken) internal pure returns (IMemecoin) {
-        return IMemecoin(
-            Currency.unwrap(
-                Currency.wrap(_nativeToken) == _key.currency0 ? _key.currency1 : _key.currency0
-            )
-        );
+    function memecoin(
+        PoolKey memory _key,
+        address _nativeToken
+    ) internal pure returns (IMemecoin) {
+        return IMemecoin(Currency.unwrap(Currency.wrap(_nativeToken) == _key.currency0 ? _key.currency1 : _key.currency0));
     }
-
 }

@@ -3,9 +3,9 @@ pragma solidity ^0.8.26;
 
 import {Ownable} from '@solady/auth/Ownable.sol';
 
-import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import {ECDSA} from '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
 import {MessageHashUtils} from '@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol';
+import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
 import {IImportVerifier} from '@flaunch-interfaces/IImportVerifier.sol';
 
@@ -14,7 +14,6 @@ import {IImportVerifier} from '@flaunch-interfaces/IImportVerifier.sol';
  * The verifier checks that the sender is the creator of the base token.
  */
 contract SolanaVerifier is IImportVerifier, Ownable {
-
     using EnumerableSet for EnumerableSet.AddressSet;
     using ECDSA for bytes32;
     using MessageHashUtils for bytes32;
@@ -31,10 +30,10 @@ contract SolanaVerifier is IImportVerifier, Ownable {
     event CrossChainERC20FactorySet(address indexed _crossChainERC20Factory);
     event TrustedSignerUpdated(address indexed _signer, bool _isTrusted);
     event BaseTokenDeployed(address indexed _baseToken, bytes32 indexed _remoteToken, address indexed _creator);
-    
+
     /**
      * This struct is used to store and represent the signed message.
-     * 
+     *
      * @param remoteToken The 32-byte identifier of the corresponding token on solana
      * @param name The name of the token
      * @param symbol The symbol of the token
@@ -60,19 +59,21 @@ contract SolanaVerifier is IImportVerifier, Ownable {
     ICrossChainERC20Factory public crossChainERC20Factory;
 
     /// Stores the signatures that have been used
-    mapping (bytes32 _signature => bool _used) internal _usedSignatures;
+    mapping(bytes32 _signature => bool _used) internal _usedSignatures;
 
     /// Mapping of solana token identifiers to base token addresses
-    mapping (bytes32 _remoteToken => address _baseToken) public remoteTokenToBaseToken;
-    mapping (address _baseToken => bytes32 _remoteToken) public baseTokenToRemoteToken;
-    mapping (address _baseToken => address _creator) public baseTokenToCreator;
+    mapping(bytes32 _remoteToken => address _baseToken) public remoteTokenToBaseToken;
+    mapping(address _baseToken => bytes32 _remoteToken) public baseTokenToRemoteToken;
+    mapping(address _baseToken => address _creator) public baseTokenToCreator;
 
     /**
      * Sets the required contract addresses and the owner of the contract.
      *
      * @param _crossChainERC20Factory The address of the CrossChainERC20Factory contract
      */
-    constructor (address _crossChainERC20Factory) {
+    constructor(
+        address _crossChainERC20Factory
+    ) {
         _initializeOwner(msg.sender);
 
         // Validate and set the CrossChainERC20Factory contract
@@ -81,10 +82,12 @@ contract SolanaVerifier is IImportVerifier, Ownable {
 
     /**
      * Deploys a base token corresponding to the solana token, when authorized by a trusted signer.
-     * 
+     *
      * @param _verificationData abi encoded SignedMessage
      */
-    function deployBaseToken(bytes memory _verificationData) external {
+    function deployBaseToken(
+        bytes memory _verificationData
+    ) external {
         // Verify signature & check that the caller is the creator
         (bytes32 remoteToken, string memory name, string memory symbol, uint8 decimals) = _verifySignature(_verificationData);
 
@@ -93,7 +96,7 @@ contract SolanaVerifier is IImportVerifier, Ownable {
             revert BaseTokenAlreadyDeployed(remoteToken);
         }
 
-         // deploy base token corresponding to the solana token
+        // deploy base token corresponding to the solana token
         address baseToken = crossChainERC20Factory.deploy(remoteToken, name, symbol, decimals);
 
         // Ensure that the baseToken is not a zero address
@@ -117,7 +120,10 @@ contract SolanaVerifier is IImportVerifier, Ownable {
      *
      * @return bool True if the sender is the creator of the base token, false otherwise
      */
-    function isValid(address _token, address _sender) public view returns (bool) {
+    function isValid(
+        address _token,
+        address _sender
+    ) public view returns (bool) {
         return baseTokenToCreator[_token] == _sender;
     }
 
@@ -126,9 +132,13 @@ contract SolanaVerifier is IImportVerifier, Ownable {
      *
      * @param _crossChainERC20Factory The address of the CrossChainERC20Factory contract
      */
-    function setCrossChainERC20Factory(address _crossChainERC20Factory) public onlyOwner {
+    function setCrossChainERC20Factory(
+        address _crossChainERC20Factory
+    ) public onlyOwner {
         // Ensure that our required contracts are not the zero address
-        if (_crossChainERC20Factory == address(0)) revert ZeroAddress();
+        if (_crossChainERC20Factory == address(0)) {
+            revert ZeroAddress();
+        }
 
         // Set the CrossChainERC20Factory contract
         crossChainERC20Factory = ICrossChainERC20Factory(_crossChainERC20Factory);
@@ -137,10 +147,12 @@ contract SolanaVerifier is IImportVerifier, Ownable {
 
     /**
      * Adds a signer to the trusted signers list.
-     * 
+     *
      * @param _signer The address to add as a trusted signer
      */
-    function addTrustedSigner(address _signer) external onlyOwner {
+    function addTrustedSigner(
+        address _signer
+    ) external onlyOwner {
         // Verify that the signer is not the zero address
         if (_signer == address(0)) {
             revert InvalidSigner(_signer);
@@ -151,16 +163,18 @@ contract SolanaVerifier is IImportVerifier, Ownable {
         if (!_trustedSigners.add(_signer)) {
             revert SignerAlreadyAdded(_signer);
         }
-        
+
         emit TrustedSignerUpdated(_signer, true);
     }
 
     /**
      * Removes a signer from the trusted signers list.
-     * 
+     *
      * @param _signer The address to remove as a trusted signer
      */
-    function removeTrustedSigner(address _signer) external onlyOwner {
+    function removeTrustedSigner(
+        address _signer
+    ) external onlyOwner {
         if (!_trustedSigners.remove(_signer)) {
             revert SignerDoesNotExist(_signer);
         }
@@ -170,7 +184,7 @@ contract SolanaVerifier is IImportVerifier, Ownable {
 
     /**
      * Get all trusted signers that are used to verify memecoins.
-     * 
+     *
      * @return signers_ Array of all registered signer addresses
      */
     function getAllTrustedSigners() public view returns (address[] memory signers_) {
@@ -179,12 +193,14 @@ contract SolanaVerifier is IImportVerifier, Ownable {
 
     /**
      * Checks if an address is a trusted signer.
-     * 
+     *
      * @param _signer The address to check
      *
      * @return valid_ `True` if the address is a trusted signer, `false` otherwise
      */
-    function isTrustedSigner(address _signer) public view returns (bool valid_) {
+    function isTrustedSigner(
+        address _signer
+    ) public view returns (bool valid_) {
         valid_ = _trustedSigners.contains(_signer);
     }
 
@@ -193,10 +209,9 @@ contract SolanaVerifier is IImportVerifier, Ownable {
      *
      * @param _verificationData abi encoded SignedMessage
      */
-    function _verifySignature(bytes memory _verificationData) 
-        internal 
-        returns (bytes32 remoteToken_, string memory name_, string memory symbol_, uint8 decimals_)
-    {
+    function _verifySignature(
+        bytes memory _verificationData
+    ) internal returns (bytes32 remoteToken_, string memory name_, string memory symbol_, uint8 decimals_) {
         (SignedMessage memory signedMessage) = abi.decode(_verificationData, (SignedMessage));
 
         // Verify the deadline is not expired
@@ -210,14 +225,16 @@ contract SolanaVerifier is IImportVerifier, Ownable {
         }
 
         // Generate the message hash for (remoteToken, name, symbol, decimals, creator, deadline)
-        bytes32 messageHash = keccak256(abi.encodePacked(
-            signedMessage.remoteToken,
-            signedMessage.name,
-            signedMessage.symbol,
-            signedMessage.decimals,
-            msg.sender,
-            signedMessage.deadline
-        ));
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(
+                signedMessage.remoteToken,
+                signedMessage.name,
+                signedMessage.symbol,
+                signedMessage.decimals,
+                msg.sender,
+                signedMessage.deadline
+            )
+        );
 
         // Generate the message hash
         bytes32 ethSignedMessageHash = messageHash.toEthSignedMessageHash();
@@ -242,5 +259,10 @@ contract SolanaVerifier is IImportVerifier, Ownable {
 }
 
 interface ICrossChainERC20Factory {
-    function deploy(bytes32 remoteToken, string memory name, string memory symbol, uint8 decimals) external returns (address);
+    function deploy(
+        bytes32 remoteToken,
+        string memory name,
+        string memory symbol,
+        uint8 decimals
+    ) external returns (address);
 }

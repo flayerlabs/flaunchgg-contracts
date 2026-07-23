@@ -3,574 +3,315 @@ pragma solidity ^0.8.26;
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
-import {FlaunchZap} from '@flaunch/zaps/FlaunchZap.sol';
-import {PositionManager} from '@flaunch/PositionManager.sol';
-import {FairLaunch} from '@flaunch/hooks/FairLaunch.sol';
-import {TreasuryManagerMock} from 'test/mocks/TreasuryManagerMock.sol';
-import {CompatibleManagerMock, IncompatibleManagerMock} from 'test/mocks/ManagerMock.sol';
-import {TreasuryManagerFactory} from '@flaunch/treasury/managers/TreasuryManagerFactory.sol';
-import {TrustedSignerFeeCalculator} from '@flaunch/fees/TrustedSignerFeeCalculator.sol';
+import {TrustedSignerFeeCalculator as TrustedSignerFeeCalculatorContract} from '@flaunch/fees/TrustedSignerFeeCalculator.sol';
 import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
+import {FlaunchZap} from '@flaunch/zaps/FlaunchZap.sol';
 
-import {ClosedPermissions} from '@flaunch/treasury/permissions/Closed.sol';
-import {WhitelistedPermissions} from '@flaunch/treasury/permissions/Whitelisted.sol';
-import {IManagerPermissions} from '@flaunch-interfaces/IManagerPermissions.sol';
-import {ITreasuryManager} from '@flaunch-interfaces/ITreasuryManager.sol';
+import {IFlaunchZap} from '@flaunch-interfaces/IFlaunchZap.sol';
+import {IPositionManager} from '@flaunch-interfaces/IPositionManager.sol';
+import {ITreasuryManagerFactory} from '@flaunch-interfaces/ITreasuryManagerFactory.sol';
 
-import {FlaunchTest} from 'test/FlaunchTest.sol';
+import {CompatibleManagerMock, IncompatibleManagerMock} from 'test/mocks/ManagerMock.sol';
+import {FlaunchTest} from '../FlaunchTest.sol';
 
-
+/**
+ * Coverage for the {FlaunchZap} treasury-manager-at-flaunch flow.
+ *
+ * When `TreasuryManagerParams.manager` is supplied, the zap flaunches with itself as the temporary
+ * creator so it receives the Flaunch ERC721, then escrows the token into the manager: an approved
+ * implementation is deployed through the factory and deposited into; a factory-deployed instance is
+ * deposited into directly; an unknown address gets a best-effort deposit with a direct transfer
+ * fallback. Any premine is swept to the original creator.
+ */
 contract FlaunchZapTest is FlaunchTest {
-
     using PoolIdLibrary for PoolKey;
 
-    IManagerPermissions public closedPermissions;
-    IManagerPermissions public whitelistedPermissions;
+    /// An approved manager implementation registered against the factory mock
+    CompatibleManagerMock internal managerImplementation;
 
-    // Structs to group related parameters and avoid stack too deep
-    struct FuzzParams {
-        uint initialTokenFairLaunch;
-        uint premineAmount;
-        address creator;
-        uint initialPrice;
-        uint airdropAmount;
-        address manager;
-        bytes32 whitelistMerkleRoot;
-        uint whitelistMaxTokens;
-        bool isClosedPermissions;
-    }
-
-    struct FlaunchResult {
-        address memecoin;
-        uint ethSpent;
-        address deployedManager;
-    }
-
-    constructor () {
-        // Deploy our platform
+    function setUp() public {
         _deployPlatform();
 
-        // {PoolManager} must have some initial flETH balance to serve `take()` requests in our hook
-        deal(address(flETH), address(poolManager), 1000e27 ether);
+        // Register an approved manager implementation on the factory (constructor args are
+        // irrelevant for an implementation that will be cloned + initialized)
+        managerImplementation = new CompatibleManagerMock(address(this), address(0));
+        treasuryManagerFactory.approveManager(address(managerImplementation));
 
-        closedPermissions = new ClosedPermissions();
-        whitelistedPermissions = new WhitelistedPermissions(treasuryManagerFactory);
+        vm.deal(address(this), 1000e27);
     }
 
-    /**
-     * This test fuzzes as many relevant factors as possible and then validates based on the
-     * expected user journey. The only variables fuzzed will be those that affect zap
-     * functionality. The other variables are tested in other suites.
-     *
-     * @param _initialTokenFairLaunch The amount of tokens available during the fair launch period
-     * @param _premineAmount The amount of tokens to premine from the fair launch
-     * @param _creator The recipient of the ERC721 token
-     * @param _initialPrice The initial price of the token
-     *
-     * @param _airdropAmount The amount of tokens to airdrop from the fair launch
-     *
-     * @param _manager An optional manager for the ERC721 token
-     *
-     * @param _whitelistMerkleRoot An optional merkle root for the whitelist
-     * @param _whitelistMaxTokens The maximum number of tokens in the whitelist
-     */
-    function test_CanFlaunch(
-        uint _initialTokenFairLaunch,
-        uint _premineAmount,
+    function _params(
         address _creator,
-        uint _initialPrice,
-        uint _airdropAmount,
-        address _manager,
-        bytes32 _whitelistMerkleRoot,
-        uint _whitelistMaxTokens,
-        bool isClosedPermissions
-    ) public {
-        // Ensure that the manager is nonzero and is a contract address to avoid `address is not a contract` reverts
-        if (_manager != address(0)) {
-            uint32 size;
-            assembly { size := extcodesize(_manager) }
-            if (size == 0) {
-                _manager = address(0);
-            }
-        }
-
-        FuzzParams memory params = FuzzParams({
-            initialTokenFairLaunch: _initialTokenFairLaunch,
+        uint _premineAmount
+    ) internal pure returns (IPositionManager.FlaunchParams memory) {
+        return IPositionManager.FlaunchParams({
+            name: 'Manager Zap Token',
+            symbol: 'MZAP',
+            tokenUri: 'https://flaunch.gg/',
             premineAmount: _premineAmount,
             creator: _creator,
-            initialPrice: _initialPrice,
-            airdropAmount: _airdropAmount,
+            creatorFeeAllocation: 50_00,
+            flaunchAt: 0,
+            initialPriceParams: abi.encode(''),
+            feeCalculatorParams: abi.encode(1_000)
+        });
+    }
+
+    function _managerParams(
+        address _manager,
+        address _permissions
+    ) internal pure returns (IFlaunchZap.TreasuryManagerParams memory) {
+        return IFlaunchZap.TreasuryManagerParams({
             manager: _manager,
-            whitelistMerkleRoot: _whitelistMerkleRoot,
-            whitelistMaxTokens: _whitelistMaxTokens,
-            isClosedPermissions: isClosedPermissions
-        });
-
-        // Validate parameters
-        _validateFuzzParams(params);
-
-        // Setup test environment
-        _setupTestEnvironment();
-
-        // Execute flaunch
-        FlaunchResult memory result = _executeFlaunch(params);
-
-        // Validate results
-        _validateWhitelist(result.memecoin, params);
-        _validateAirdrop(result.memecoin, params);
-        _validateTreasuryManager(result.deployedManager, params);
-        _validateRefundedETH(result.ethSpent);
-    }
-
-    function _validateFuzzParams(FuzzParams memory params) internal view {
-        // Ensure that the creator is not a zero address, as this will revert
-        vm.assume(params.creator != address(0));
-
-        // Ensure that our initial token supply is valid (InvalidInitialSupply)
-        vm.assume(params.initialTokenFairLaunch <= flaunch.MAX_FAIR_LAUNCH_TOKENS());
-
-        // Ensure that our premine does not exceed the fair launch (PremineExceedsInitialAmount)
-        vm.assume(params.premineAmount <= params.initialTokenFairLaunch);
-
-        // Ensure that if we are airdropping, that the amount is not greater than the premine amount
-        vm.assume(params.airdropAmount <= params.premineAmount);
-    }
-
-    function _setupTestEnvironment() internal {
-        // Provide our user with enough FLETH to make the premine swap
-        deal(address(this), 2000e27);
-        flETH.deposit{value: 1000e27}();
-        flETH.approve(address(flaunchZap), 1000e27);
-    }
-
-    function _executeFlaunch(FuzzParams memory params) internal returns (FlaunchResult memory) {
-        // Flaunch time baby!
-        (address memecoin_, uint ethSpent_, address deployedManager_) = flaunchZap.flaunch{value: 1000e27}({
-            _flaunchParams: PositionManager.FlaunchParams({
-                name: 'FlaunchZap',
-                symbol: 'ZAP',
-                tokenUri: 'ipfs://123',
-                initialTokenFairLaunch: params.initialTokenFairLaunch,
-                fairLaunchDuration: 0,
-                premineAmount: params.premineAmount,
-                creator: params.creator,
-                creatorFeeAllocation: 80_00,
-                flaunchAt: 0,
-                initialPriceParams: abi.encode(params.initialPrice),
-                feeCalculatorParams: abi.encode('')
-            }),
-            _trustedFeeSigner: address(0),
-            _premineSwapHookData: bytes(''),
-            _whitelistParams: FlaunchZap.WhitelistParams({
-                merkleRoot: params.whitelistMerkleRoot,
-                merkleIPFSHash: 'ipfs://123',
-                maxTokens: params.whitelistMaxTokens
-            }),
-            _airdropParams: FlaunchZap.AirdropParams({
-                airdropIndex: 0,
-                airdropAmount: params.airdropAmount,
-                airdropEndTime: block.timestamp + 30 days,
-                merkleRoot: bytes32('testing'),
-                merkleIPFSHash: 'ipfs://'
-            }),
-            _treasuryManagerParams: FlaunchZap.TreasuryManagerParams({
-                manager: params.manager,
-                permissions: params.isClosedPermissions ? address(closedPermissions) : address(whitelistedPermissions),
-                initializeData: abi.encode(''),
-                depositData: abi.encode('')
-            })
-        });
-
-        return FlaunchResult({
-            memecoin: memecoin_,
-            ethSpent: ethSpent_,
-            deployedManager: deployedManager_
+            permissions: _permissions,
+            initializeData: abi.encode('init'),
+            depositData: abi.encode('deposit')
         });
     }
 
-    function _validateWhitelist(address memecoin, FuzzParams memory params) internal view {
-        // Check our whitelist
-        (bytes32 root, string memory ipfs, uint maxTokens, bool active, bool exists) = whitelistFairLaunch.whitelistMerkles(
-            positionManager.poolKey(memecoin).toId()
-        );
+    /* -------------------------------------------------------------------------- */
+    /*   1 - approved implementation: deploy + deposit (+ optional permissions)    */
+    /* -------------------------------------------------------------------------- */
 
-        if (params.whitelistMerkleRoot != '' && params.initialTokenFairLaunch != 0) {
-            assertEq(root, params.whitelistMerkleRoot);
-            assertEq(ipfs, 'ipfs://123');
-            assertEq(maxTokens, params.whitelistMaxTokens);
-            assertEq(active, true);
-            assertEq(exists, true);
-        } else {
-            assertEq(root, '');
-            assertEq(ipfs, '');
-            assertEq(maxTokens, 0);
-            assertEq(active, false);
-            assertEq(exists, false);
-        }
-    }
+    function test_CanFlaunchWithApprovedManagerImplementation() public {
+        address creator = makeAddr('creator');
 
-    function _validateAirdrop(address memecoin, FuzzParams memory params) internal view {
-        // Check our airdrop
-        if (params.premineAmount != 0 && params.airdropAmount != 0) {
-            // @dev The airdrop count reflects the creator, not the manager
-            assertEq(merkleAirdrop.airdropsCount(params.creator), 1);
-            assertEq(IERC20(memecoin).balanceOf(address(merkleAirdrop)), params.airdropAmount);
-        } else {
-            assertEq(merkleAirdrop.airdropsCount(params.creator), 0);
-            assertEq(IERC20(memecoin).balanceOf(address(merkleAirdrop)), 0);
-        }
-    }
-
-    function _validateTreasuryManager(address deployedManager, FuzzParams memory params) internal view {
-        // Check our treasury manager
-        if (params.manager != address(0)) {
-            // The manager should be the owner of the token
-            assertEq(flaunch.ownerOf(1), params.manager);
-
-            // The manager should be returned in the flaunch call from the zap
-            assertEq(deployedManager, params.manager);
-
-            // if the manager was an approved implementation
-            if (treasuryManagerFactory.approvedManagerImplementation(params.manager)) {
-                // The permissions should be set on the manager
-                assertEq(address(ITreasuryManager(deployedManager).permissions()), params.isClosedPermissions ? address(closedPermissions) : address(whitelistedPermissions));
-
-                // The manager owner should be the creator
-                assertEq(ITreasuryManager(deployedManager).managerOwner(), params.creator);
-            }
-        } else {
-            // The creator should be the owner of the token
-            assertEq(flaunch.ownerOf(1), params.creator);
-
-            // No manager information should be deployed against the token
-            assertEq(deployedManager, address(0));
-        }
-    }
-
-    function _validateRefundedETH(uint ethSpent) internal view {
-        // Check our refunded ETH
-        assertEq(payable(address(this)).balance, 1000e27 - ethSpent);
-    }
-
-    function test_CanScheduleFlaunchAndPremine(
-        uint _initialTokenFairLaunch,
-        uint _premineAmount,
-        address _creator,
-        uint _flaunchAt,
-        uint _initialPrice
-    ) public {
-        // Ensure that the creator is not a zero address, as this will revert
-        vm.assume(_creator != address(0));
-
-        // Ensure that our initial token supply is valid (InvalidInitialSupply). We could reference
-        // `MAX_FAIR_LAUNCH_TOKENS` directly, but this would be the total supply of the token, which
-        // does not make sense for a test. Instead we specify 10% of total supply
-        vm.assume(_initialTokenFairLaunch <= 10e27);
-
-        // Ensure that our premine does not exceed the fair launch (PremineExceedsInitialAmount)
-        vm.assume(_premineAmount > 0 && _premineAmount <= _initialTokenFairLaunch);
-
-        // Ensure that our flaunch time is in the future
-        vm.assume(_flaunchAt > block.timestamp && _flaunchAt <= block.timestamp + 30 days);
-
-        // Provide our user with enough FLETH to make the premine swap
-        deal(address(this), 2000e27);
-        flETH.deposit{value: 1000e27}();
-        flETH.approve(address(flaunchZap), 1000e27);
-
-        // Flaunch time baby!
-        (address memecoin_, uint ethSpent_, ) = flaunchZap.flaunch{value: 1000e27}({
-            _flaunchParams: PositionManager.FlaunchParams({
-                name: 'FlaunchZap',
-                symbol: 'ZAP',
-                tokenUri: 'ipfs://123',
-                initialTokenFairLaunch: _initialTokenFairLaunch,
-                fairLaunchDuration: 30 minutes,
-                premineAmount: _premineAmount,
-                creator: _creator,
-                creatorFeeAllocation: 80_00,
-                flaunchAt: _flaunchAt,
-                initialPriceParams: abi.encode(_initialPrice),
-                feeCalculatorParams: abi.encode('')
-            }),
-            _trustedFeeSigner: address(0),
-            _premineSwapHookData: bytes('')
+        (address memecoin,, address deployedManager) = flaunchZap.flaunch({
+            _flaunchParams: _params(creator, 0),
+            _treasuryManagerParams: _managerParams(address(managerImplementation), address(0)),
+            _trustedFeeSigner: address(0)
         });
 
-        // Check our refunded ETH
-        assertEq(payable(address(this)).balance, 1000e27 - ethSpent_);
+        // A fresh instance was cloned from the implementation
+        assertTrue(deployedManager != address(0), 'no manager deployed');
+        assertTrue(deployedManager != address(managerImplementation), 'implementation was used directly');
+        assertEq(
+            treasuryManagerFactory.managerImplementation(deployedManager),
+            address(managerImplementation),
+            'clone not registered against the implementation'
+        );
 
-        // Jump when in Fair Launch
-        vm.warp(_flaunchAt + 1);
+        // The Flaunch ERC721 was deposited into the deployed manager on behalf of the creator
+        uint tokenId = flaunch.tokenId(memecoin);
+        assertEq(flaunch.ownerOf(tokenId), deployedManager, 'NFT not deposited into the manager');
 
-        // Check the Fair Launch status
-        PoolId poolId = positionManager.poolKey(memecoin_).toId();
-        
-        // We should only still be in FairLaunch if the premine did not fill the initial fair launch supply
-        assertEq(fairLaunch.inFairLaunchWindow(poolId), _premineAmount < _initialTokenFairLaunch);
+        CompatibleManagerMock manager = CompatibleManagerMock(deployedManager);
+        assertEq(manager.lastCreator(), creator, 'deposit not recorded against the creator');
+        assertEq(manager.lastDepositData(), abi.encode('deposit'), 'deposit data not forwarded');
 
-        // Check Fair Launch allocation
-        FairLaunch.FairLaunchInfo memory fairLaunchInfo = fairLaunch.fairLaunchInfo(poolId);
-        assertEq(fairLaunchInfo.supply, _initialTokenFairLaunch - _premineAmount);
+        // With no permissions, the creator owns the manager from deployment
+        assertEq(manager.managerOwner(), creator, 'creator does not own the manager');
     }
 
-    function test_CanCalculateFees() public {
-        // Set an fee to flaunch
-        vm.mockCall(
-            address(positionManager),
-            abi.encodeWithSelector(PositionManager.getFlaunchingFee.selector),
-            abi.encode(0.001e18)
-        );
+    function test_CanFlaunchWithApprovedManagerImplementation_WithPermissions() public {
+        address creator = makeAddr('creator');
+        address permissions = makeAddr('permissions');
 
-        // Set an expected market cap here to in-line with Sepolia tests (2~ eth)
-        vm.mockCall(
-            address(positionManager),
-            abi.encodeWithSelector(PositionManager.getFlaunchingMarketCap.selector),
-            abi.encode(2e18)
-        );
-
-        // premineCost : 0.1 ether
-        // premineCost swap fee : 0.001 ether
-        // fee : 0.001 ether
-
-        uint ethRequired = flaunchZap.calculateFee(supplyShare(5_00), 0, abi.encode(''));
-        assertEq(ethRequired, 0.1 ether + 0.001 ether + 0.001 ether);
-
-        // premineCost : 0.2 ether
-        // premineCost swap fee : 0.002 ether
-        // fee : 0.001 ether
-
-        ethRequired = flaunchZap.calculateFee(supplyShare(10_00), 0, abi.encode(''));
-        assertEq(ethRequired, 0.2 ether + 0.002 ether + 0.001 ether);
-    }
-
-    function test_deployAndInitializeManagerWithPermissions() public {
-        address permissionsContract = address(0x789);
-
-        // Deploy a mocked manager implementation
-        address managerImplementation = address(new TreasuryManagerMock(address(treasuryManagerFactory), address(feeEscrowRegistry)));
-        
-        treasuryManagerFactory.approveManager(managerImplementation);
-
-        // We know the address in advance for this test, so we can assert the expected value
-        vm.expectEmit();
-        emit TreasuryManagerFactory.ManagerDeployed(0x514dd0Bcaf5994Ef889f482B79d39D18B6E4363F, managerImplementation);
-
-        // Deploy and initialize the manager with permissions
-        address payable _manager = flaunchZap.deployAndInitializeManager(
-            managerImplementation,
-            address(this),
-            abi.encode('Test initialization'),
-            permissionsContract
-        );
-
-        // Verify the manager was deployed correctly
-        assertEq(treasuryManagerFactory.managerImplementation(_manager), managerImplementation);
-        
-        // Verify the manager was initialized correctly
-        TreasuryManagerMock manager = TreasuryManagerMock(_manager);
-        assertTrue(manager.initialized());
-        assertEq(manager.managerOwner(), address(this));
-        
-        // Verify permissions were set correctly
-        assertEq(address(manager.permissions()), permissionsContract);
-    }
-
-    function test_CanFlaunchToUnknownManagerThatSupportsDeposit() public {
-        // Setup test environment
-        _setupTestEnvironment();
-        
-        // Deploy a compatible manager that implements ITreasuryManager
-        CompatibleManagerMock compatibleManager = new CompatibleManagerMock(
-            address(this), // owner
-            address(0) // feeEscrowRegistry (mock)
-        );
-        
-        // Flaunch with the compatible manager
-        (address memecoin_, uint ethSpent_, address deployedManager_) = flaunchZap.flaunch({
-            _flaunchParams: PositionManager.FlaunchParams({
-                name: 'FlaunchZap',
-                symbol: 'ZAP',
-                tokenUri: 'ipfs://123',
-                initialTokenFairLaunch: 0,
-                fairLaunchDuration: 30 minutes,
-                premineAmount: 0,
-                creator: address(this),
-                creatorFeeAllocation: 80_00,
-                flaunchAt: block.timestamp,
-                initialPriceParams: abi.encode(1000e6),
-                feeCalculatorParams: abi.encode('')
-
-            }),
-            _trustedFeeSigner: address(0),
-            _premineSwapHookData: '',
-            _whitelistParams: FlaunchZap.WhitelistParams({
-                merkleRoot: '',
-                merkleIPFSHash: '',
-                maxTokens: 0
-            }),
-            _airdropParams: FlaunchZap.AirdropParams({
-                airdropIndex: 0,
-                airdropAmount: 0,
-                airdropEndTime: 0,
-                merkleRoot: '',
-                merkleIPFSHash: ''
-            }),
-            _treasuryManagerParams: FlaunchZap.TreasuryManagerParams({
-                manager: address(compatibleManager),
-                permissions: address(0),
-                initializeData: '',
-                depositData: abi.encode('test deposit data')
-            })
+        (address memecoin,, address deployedManager) = flaunchZap.flaunch({
+            _flaunchParams: _params(creator, 0),
+            _treasuryManagerParams: _managerParams(address(managerImplementation), permissions),
+            _trustedFeeSigner: address(0)
         });
-        
-        // Verify the flaunch was successful
-        assertTrue(memecoin_ != address(0), 'Memecoin should be deployed');
-        assertEq(deployedManager_, address(compatibleManager), 'Deployed manager should be the compatible manager');
-        
-        // Verify the manager received the flaunch token via deposit
-        uint tokenId = flaunch.tokenId(memecoin_);
-        assertEq(flaunch.ownerOf(tokenId), address(compatibleManager), 'Manager should own the flaunch token');
-        
-        // Verify the deposit data was stored
-        bytes memory storedData = compatibleManager.lastDepositData();
-        assertEq(keccak256(storedData), keccak256(abi.encode('test deposit data')), 'Manager should store deposit data');
+
+        // The zap owned the manager while it set the permissions, then handed it to the creator
+        CompatibleManagerMock manager = CompatibleManagerMock(deployedManager);
+        assertEq(address(manager.permissions()), permissions, 'permissions not applied');
+        assertEq(manager.managerOwner(), creator, 'ownership not handed to the creator');
+        assertEq(flaunch.ownerOf(flaunch.tokenId(memecoin)), deployedManager, 'NFT not deposited into the manager');
     }
 
-    function test_CanFlaunchToUnknownManagerThatDoesNotSupportDeposit() public {
-        // Setup test environment
-        _setupTestEnvironment();
-        
-        // Deploy an incompatible manager that does NOT implement ITreasuryManager
+    /* -------------------------------------------------------------------------- */
+    /*   2 - previously deployed factory instance: deposit directly                */
+    /* -------------------------------------------------------------------------- */
+
+    function test_CanFlaunchWithPreDeployedManagerInstance() public {
+        address creator = makeAddr('creator');
+
+        // Deploy an instance through the factory up-front; the zap must recognise it and deposit
+        // into it rather than cloning it
+        address payable instance = treasuryManagerFactory.deployAndInitializeManager({
+            _managerImplementation: address(managerImplementation),
+            _owner: address(this),
+            _data: ''
+        });
+
+        (address memecoin,, address deployedManager) = flaunchZap.flaunch({
+            _flaunchParams: _params(creator, 0),
+            _treasuryManagerParams: _managerParams(instance, address(0)),
+            _trustedFeeSigner: address(0)
+        });
+
+        assertEq(deployedManager, instance, 'existing instance should be used directly');
+        assertEq(flaunch.ownerOf(flaunch.tokenId(memecoin)), instance, 'NFT not deposited into the instance');
+        assertEq(CompatibleManagerMock(instance).lastCreator(), creator, 'deposit not recorded against the creator');
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /*   3 - unknown manager: best-effort deposit / direct transfer fallback       */
+    /* -------------------------------------------------------------------------- */
+
+    function test_CanFlaunchWithUnknownCompatibleManager() public {
+        address creator = makeAddr('creator');
+
+        // A compatible manager that the factory has never seen: the zap's best-effort deposit
+        // succeeds and the manager pulls the NFT itself
+        CompatibleManagerMock unknownManager = new CompatibleManagerMock(address(this), address(0));
+
+        (address memecoin,, address deployedManager) = flaunchZap.flaunch({
+            _flaunchParams: _params(creator, 0),
+            _treasuryManagerParams: _managerParams(address(unknownManager), address(0)),
+            _trustedFeeSigner: address(0)
+        });
+
+        assertEq(deployedManager, address(unknownManager), 'unknown manager should be used directly');
+        assertEq(flaunch.ownerOf(flaunch.tokenId(memecoin)), address(unknownManager), 'NFT not deposited');
+        assertEq(unknownManager.lastCreator(), creator, 'deposit not recorded against the creator');
+    }
+
+    function test_CanFlaunchWithUnknownIncompatibleManager() public {
+        address creator = makeAddr('creator');
+
+        // A manager without a deposit function: its fallback swallows the deposit call without
+        // pulling the NFT, so the zap must transfer the token to it directly
         IncompatibleManagerMock incompatibleManager = new IncompatibleManagerMock(address(this));
-        
-        // Flaunch with the incompatible manager
-        (address memecoin_, uint ethSpent_, address deployedManager_) = flaunchZap.flaunch({
-            _flaunchParams: PositionManager.FlaunchParams({
-                name: 'FlaunchZap',
-                symbol: 'ZAP',
-                tokenUri: 'ipfs://123',
-                initialTokenFairLaunch: 0,
-                fairLaunchDuration: 30 minutes,
-                premineAmount: 0,
-                creator: address(this),
-                creatorFeeAllocation: 80_00,
-                flaunchAt: block.timestamp,
-                initialPriceParams: abi.encode(1000e6),
-                feeCalculatorParams: abi.encode('')
-            }),
-            _trustedFeeSigner: address(0),
-            _premineSwapHookData: '',
-            _whitelistParams: FlaunchZap.WhitelistParams({
-                merkleRoot: '',
-                merkleIPFSHash: '',
-                maxTokens: 0
-            }),
-            _airdropParams: FlaunchZap.AirdropParams({
-                airdropIndex: 0,
-                airdropAmount: 0,
-                airdropEndTime: 0,
-                merkleRoot: '',
-                merkleIPFSHash: ''
-            }),
-            _treasuryManagerParams: FlaunchZap.TreasuryManagerParams({
-                manager: address(incompatibleManager),
-                permissions: address(0),
-                initializeData: '',
-                depositData: abi.encode('this should not work')
-            })
+
+        (address memecoin,, address deployedManager) = flaunchZap.flaunch({
+            _flaunchParams: _params(creator, 0),
+            _treasuryManagerParams: _managerParams(address(incompatibleManager), address(0)),
+            _trustedFeeSigner: address(0)
         });
-        
-        // Verify the flaunch was successful
-        assertTrue(memecoin_ != address(0), 'Memecoin should be deployed');
-        assertEq(deployedManager_, address(incompatibleManager), 'Deployed manager should be the incompatible manager');
-        
-        // Verify the manager received the flaunch token via direct transfer (fallback)
-        uint tokenId = flaunch.tokenId(memecoin_);
-        assertEq(flaunch.ownerOf(tokenId), address(incompatibleManager), 'Manager should own the flaunch token via direct transfer');
+
+        assertEq(deployedManager, address(incompatibleManager), 'incompatible manager should be used directly');
+        assertEq(
+            flaunch.ownerOf(flaunch.tokenId(memecoin)), address(incompatibleManager), 'NFT not transferred directly'
+        );
     }
 
-    function test_CanFlaunchWithTrustedFeeSigner(
-        address _trustedFeeSigner,
-        bool _depositIntoManager,
-        address _creator,
-        uint _initialPrice
-    ) public {
-        vm.assume(_trustedFeeSigner != address(0));
-        vm.assume(_creator != address(0));
+    /* -------------------------------------------------------------------------- */
+    /*   4 - composition with the trusted-signer path                              */
+    /* -------------------------------------------------------------------------- */
 
-        _setupTestEnvironment();
+    function test_ManagerWithTrustedSigner_NftToManager_PremineToCreator() public {
+        address creator = makeAddr('creator');
+        uint premineAmount = 0.001 ether;
+        (address signer,) = makeAddrAndKey('signer');
 
-        // Set the TrustedSignerFeeCalculator to the PositionManager
-        TrustedSignerFeeCalculator feeCalculator = new TrustedSignerFeeCalculator(address(flETH));
+        // The trusted-signer flow requires the {TrustedSignerFeeCalculator} to be active
+        TrustedSignerFeeCalculatorContract feeCalculator = new TrustedSignerFeeCalculatorContract(address(flETH));
         feeCalculator.grantRole(ProtocolRoles.POSITION_MANAGER, address(positionManager));
-        positionManager.setFairLaunchFeeCalculator(feeCalculator);
+        positionManager.setFeeCalculator(feeCalculator);
 
-        // for feeCalculatorParams
-        TrustedSignerFeeCalculator.FairLaunchSettings memory settings = TrustedSignerFeeCalculator.FairLaunchSettings({
-            enabled: true,
-            walletCap: 10 ether,
-            txCap: 5 ether
+        IPositionManager.FlaunchParams memory params = _params(creator, premineAmount);
+        params.creatorFeeAllocation = 0;
+        params.feeCalculatorParams = abi.encode(false, uint(0), uint(0));
+
+        (address memecoin,, address deployedManager) = flaunchZap.flaunch{value: 1000e27}({
+            _flaunchParams: params,
+            _treasuryManagerParams: _managerParams(address(managerImplementation), address(0)),
+            _trustedFeeSigner: signer
         });
 
-        // for treasuryManagerParams
-        address managerImplementation;
-        if (_depositIntoManager) {
-            // Deploy a mocked manager implementation
-            managerImplementation = address(new TreasuryManagerMock(address(treasuryManagerFactory), address(feeEscrowRegistry)));
-            treasuryManagerFactory.approveManager(managerImplementation);
-        }
+        // The trusted signer was registered against the created pool
+        PoolKey memory poolKey = positionManager.poolKey(memecoin);
+        (address poolSigner, bool enabled) = feeCalculator.trustedPoolKeySigner(poolKey.toId());
+        assertEq(poolSigner, signer, 'trusted signer not registered');
+        assertTrue(enabled, 'trusted signer not enabled');
 
-        (address memecoin_, , address deployedManager_) = flaunchZap.flaunch{value: 1000e27}({
-            _flaunchParams: PositionManager.FlaunchParams({
-                name: 'FlaunchZap',
-                symbol: 'ZAP',
-                tokenUri: 'ipfs://123',
-                initialTokenFairLaunch: 1e18,
-                fairLaunchDuration: 30 minutes,
-                premineAmount: 0,
-                creator: _creator,
-                creatorFeeAllocation: 80_00,
-                flaunchAt: 0,
-                initialPriceParams: abi.encode(_initialPrice),
-                feeCalculatorParams: abi.encode(settings)
-            }),
-            _trustedFeeSigner: _trustedFeeSigner,
-            _premineSwapHookData: bytes(''),
-            _whitelistParams: FlaunchZap.WhitelistParams({
-                merkleRoot: bytes32(''),
-                merkleIPFSHash: '',
-                maxTokens: 0
-            }),
-            _airdropParams: FlaunchZap.AirdropParams({
-                airdropIndex: 0,
-                airdropAmount: 0,
-                airdropEndTime: 0,
-                merkleRoot: bytes32(''),
-                merkleIPFSHash: ''
-            }),
-            _treasuryManagerParams: FlaunchZap.TreasuryManagerParams({
-                manager: managerImplementation,
-                permissions: address(0),
-                initializeData: abi.encode(''),
-                depositData: abi.encode('')
-            })
+        // The NFT went to the manager and the premine to the original creator; the zap holds neither
+        assertEq(flaunch.ownerOf(flaunch.tokenId(memecoin)), deployedManager, 'NFT not deposited into the manager');
+        assertEq(CompatibleManagerMock(deployedManager).lastCreator(), creator, 'deposit not recorded against creator');
+        assertEq(IERC20(memecoin).balanceOf(creator), premineAmount, 'creator did not receive the premine');
+        assertEq(IERC20(memecoin).balanceOf(address(flaunchZap)), 0, 'zap stranded the premine');
+        assertEq(address(flaunchZap).balance, 0, 'zap stranded ETH');
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /*   5 - zap without a factory bound: unknown-manager path still works         */
+    /* -------------------------------------------------------------------------- */
+
+    function test_FactoryZeroAddress_FallsBackToUnknownManagerPath() public {
+        address creator = makeAddr('creator');
+
+        FlaunchZap zapWithoutFactory =
+            new FlaunchZap(positionManager, flaunch, ITreasuryManagerFactory(address(0)));
+
+        // Even an APPROVED implementation routes through the unknown-manager path (no factory to
+        // consult), so the deposit is made against the implementation address itself
+        CompatibleManagerMock unknownManager = new CompatibleManagerMock(address(this), address(0));
+
+        (address memecoin,, address deployedManager) = zapWithoutFactory.flaunch({
+            _flaunchParams: _params(creator, 0),
+            _treasuryManagerParams: _managerParams(address(unknownManager), address(0)),
+            _trustedFeeSigner: address(0)
         });
 
-        // Check memecoin creator
-        address memecoinCreator = flaunch.ownerOf(1);
-        if (_depositIntoManager) {
-            assertEq(memecoinCreator, deployedManager_);
-        } else {
-            assertEq(memecoinCreator, _creator);
-        }
+        assertEq(deployedManager, address(unknownManager), 'manager should be used directly without a factory');
+        assertEq(flaunch.ownerOf(flaunch.tokenId(memecoin)), address(unknownManager), 'NFT not deposited');
 
-        // Check trusted fee signer
-        (address signer, bool enabled) = feeCalculator.trustedPoolKeySigner(positionManager.poolKey(memecoin_).toId());
-        assertEq(signer, _trustedFeeSigner);
-        assertTrue(enabled);
+        // The explicit deploy helper cannot work without a factory
+        vm.expectRevert(IFlaunchZap.TreasuryManagerFactoryNotSet.selector);
+        zapWithoutFactory.deployAndInitializeManager(address(managerImplementation), creator, '', address(0));
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /*   6 - guards                                                                */
+    /* -------------------------------------------------------------------------- */
+
+    function test_ManagerOverload_RevertsCreatorCannotBeZero() public {
+        vm.expectRevert(IFlaunchZap.CreatorCannotBeZero.selector);
+        flaunchZap.flaunch({
+            _flaunchParams: _params(address(0), 0),
+            _treasuryManagerParams: _managerParams(address(managerImplementation), address(0)),
+            _trustedFeeSigner: address(0)
+        });
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /*   7 - empty manager params behave exactly like the plain overload           */
+    /* -------------------------------------------------------------------------- */
+
+    function test_EmptyManagerParams_MatchesExistingOverload() public {
+        address creator = makeAddr('creator');
+        uint premineAmount = 0.001 ether;
+
+        IFlaunchZap.TreasuryManagerParams memory noManager;
+
+        (address memecoin,, address deployedManager) = flaunchZap.flaunch{value: 1000e27}({
+            _flaunchParams: _params(creator, premineAmount),
+            _treasuryManagerParams: noManager,
+            _trustedFeeSigner: address(0)
+        });
+
+        // No manager involved: the NFT and premine are delivered straight to the creator
+        assertEq(deployedManager, address(0), 'no manager should be deployed');
+        assertEq(flaunch.ownerOf(flaunch.tokenId(memecoin)), creator, 'creator should hold the NFT');
+        assertEq(IERC20(memecoin).balanceOf(creator), premineAmount, 'creator should receive the premine');
+        assertEq(IERC20(memecoin).balanceOf(address(flaunchZap)), 0, 'zap must not strand memecoin');
+        assertEq(address(flaunchZap).balance, 0, 'zap must refund all leftover ETH');
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /*   8 - deployAndInitializeManager helper                                     */
+    /* -------------------------------------------------------------------------- */
+
+    function test_CanDeployAndInitializeManager() public {
+        address owner = makeAddr('managerOwner');
+        address permissions = makeAddr('permissions');
+
+        address payable manager =
+            flaunchZap.deployAndInitializeManager(address(managerImplementation), owner, abi.encode('init'), permissions);
+
+        // The zap owned the manager while setting permissions, then handed ownership over
+        CompatibleManagerMock deployed = CompatibleManagerMock(manager);
+        assertEq(address(deployed.permissions()), permissions, 'permissions not applied');
+        assertEq(deployed.managerOwner(), owner, 'ownership not handed over');
+        assertEq(
+            treasuryManagerFactory.managerImplementation(manager),
+            address(managerImplementation),
+            'manager not registered against the implementation'
+        );
     }
 }

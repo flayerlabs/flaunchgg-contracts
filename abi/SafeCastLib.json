@@ -1,0 +1,9 @@
+{
+  "abi": [
+    {
+      "type": "error",
+      "name": "Overflow",
+      "inputs": []
+    }
+  ]
+}

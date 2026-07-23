@@ -12,7 +12,7 @@
         {
           "name": "_params",
           "type": "tuple[]",
-          "internalType": "struct IndexerSubscriber.AddIndexParams[]",
+          "internalType": "struct IIndexerSubscriber.AddIndexParams[]",
           "components": [
             {
               "name": "flaunch",
@@ -25,6 +25,19 @@
               "internalType": "uint256[]"
             }
           ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "addVerifiedFlaunch",
+      "inputs": [
+        {
+          "name": "_flaunch",
+          "type": "address",
+          "internalType": "address"
         }
       ],
       "outputs": [],
@@ -49,6 +62,25 @@
       ],
       "outputs": [],
       "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "isVerifiedFlaunch",
+      "inputs": [
+        {
+          "name": "_flaunch",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "verified_",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
     },
     {
       "type": "function",
@@ -141,6 +173,19 @@
     },
     {
       "type": "function",
+      "name": "removeVerifiedFlaunch",
+      "inputs": [
+        {
+          "name": "_flaunch",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
       "name": "renounceOwnership",
       "inputs": [],
       "outputs": [],
@@ -205,6 +250,25 @@
     },
     {
       "type": "event",
+      "name": "FlaunchVerified",
+      "inputs": [
+        {
+          "name": "_flaunch",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "_verified",
+          "type": "bool",
+          "indexed": false,
+          "internalType": "bool"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
       "name": "OwnershipHandoverCanceled",
       "inputs": [
         {
@@ -249,9 +313,57 @@
       "anonymous": false
     },
     {
+      "type": "event",
+      "name": "PoolIndexed",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "PoolId"
+        },
+        {
+          "name": "_flaunch",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "_memecoin",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "_memecoinTreasury",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "_tokenId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
       "type": "error",
       "name": "AlreadyInitialized",
       "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "FlaunchNotVerified",
+      "inputs": [
+        {
+          "name": "_flaunch",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
     },
     {
       "type": "error",

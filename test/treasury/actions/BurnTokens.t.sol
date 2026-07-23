@@ -4,17 +4,16 @@ pragma solidity ^0.8.26;
 import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
-import {BurnTokensAction, ITreasuryAction} from '@flaunch/treasury/actions/BurnTokens.sol';
-import {MemecoinTreasury} from '@flaunch/treasury/MemecoinTreasury.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
+import {MemecoinTreasury} from '@flaunch/treasury/MemecoinTreasury.sol';
+import {BurnTokensAction, ITreasuryAction} from '@flaunch/treasury/actions/BurnTokens.sol';
 
 import {IMemecoin} from '@flaunch-interfaces/IMemecoin.sol';
 
 import {FlaunchTest} from '../../FlaunchTest.sol';
-
+import {IPositionManager} from '@flaunch-interfaces/IPositionManager.sol';
 
 contract BurnTokensActionTest is FlaunchTest {
-
     PoolKey poolKey;
     BurnTokensAction action;
     MemecoinTreasury memecoinTreasury;
@@ -26,12 +25,10 @@ contract BurnTokensActionTest is FlaunchTest {
 
         // Flaunch a new token
         memecoin = positionManager.flaunch(
-            PositionManager.FlaunchParams({
+            IPositionManager.FlaunchParams({
                 name: 'Token Name',
                 symbol: 'TOKEN',
                 tokenUri: 'https://flaunch.gg/',
-                initialTokenFairLaunch: supplyShare(10),
-                fairLaunchDuration: 30 minutes,
                 premineAmount: 0,
                 creator: address(this),
                 creatorFeeAllocation: 50_00,
@@ -75,5 +72,4 @@ contract BurnTokensActionTest is FlaunchTest {
 
         memecoinTreasury.executeAction(address(action), '');
     }
-
 }

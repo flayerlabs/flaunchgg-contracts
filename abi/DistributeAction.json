@@ -4,7 +4,7 @@
       "type": "constructor",
       "inputs": [
         {
-          "name": "_nativeToken",
+          "name": "_flETH",
           "type": "address",
           "internalType": "address"
         }
@@ -62,7 +62,7 @@
     },
     {
       "type": "function",
-      "name": "nativeToken",
+      "name": "flETH",
       "inputs": [],
       "outputs": [
         {

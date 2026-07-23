@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-
 /**
  * This interface defines the function that verifies if a token is valid to be bridged.
  */
 interface IImportVerifier {
-
     /**
      * Checks if a token is valid to be bridged.
      *
@@ -15,6 +13,8 @@ interface IImportVerifier {
      *
      * @return bool True if the token is valid, false otherwise
      */
-    function isValid(address _token, address _sender) external view returns (bool);
-
+    function isValid(
+        address _token,
+        address _sender
+    ) external view returns (bool);
 }

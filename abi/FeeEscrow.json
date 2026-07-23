@@ -4,7 +4,7 @@
       "type": "constructor",
       "inputs": [
         {
-          "name": "_nativeToken",
+          "name": "_escrowToken",
           "type": "address",
           "internalType": "address"
         },
@@ -41,7 +41,7 @@
         }
       ],
       "outputs": [],
-      "stateMutability": "nonpayable"
+      "stateMutability": "payable"
     },
     {
       "type": "function",
@@ -84,26 +84,26 @@
     },
     {
       "type": "function",
-      "name": "indexer",
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "",
-          "type": "address",
-          "internalType": "contract IndexerSubscriber"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "nativeToken",
+      "name": "escrowToken",
       "inputs": [],
       "outputs": [
         {
           "name": "",
           "type": "address",
           "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "indexer",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "contract IIndexerSubscriber"
         }
       ],
       "stateMutability": "view"
@@ -142,6 +142,19 @@
     },
     {
       "type": "function",
+      "name": "pairedTokenRegistry",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "contract IPairedTokenRegistry"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "renounceOwnership",
       "inputs": [],
       "outputs": [],
@@ -160,6 +173,19 @@
       "inputs": [
         {
           "name": "_indexer",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setPairedTokenRegistry",
+      "inputs": [
+        {
+          "name": "_pairedTokenRegistry",
           "type": "address",
           "internalType": "address"
         }
@@ -327,6 +353,11 @@
     {
       "type": "error",
       "name": "AlreadyInitialized",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "IncorrectNativeDeposit",
       "inputs": []
     },
     {

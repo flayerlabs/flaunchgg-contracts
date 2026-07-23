@@ -63,7 +63,7 @@
         {
           "name": "_params",
           "type": "tuple",
-          "internalType": "struct IPoolManager.SwapParams",
+          "internalType": "struct SwapParams",
           "components": [
             {
               "name": "zeroForOne",
@@ -131,7 +131,7 @@
         {
           "name": "_params",
           "type": "tuple",
-          "internalType": "struct IPoolManager.SwapParams",
+          "internalType": "struct SwapParams",
           "components": [
             {
               "name": "zeroForOne",
@@ -204,7 +204,7 @@
         {
           "name": "_params",
           "type": "tuple",
-          "internalType": "struct IPoolManager.SwapParams",
+          "internalType": "struct SwapParams",
           "components": [
             {
               "name": "zeroForOne",

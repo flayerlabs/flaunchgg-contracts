@@ -9,14 +9,13 @@ import {MarketCappedPriceV3} from '@flaunch/price/MarketCappedPriceV3.sol';
  * This contract defines an initial flaunch price by finding the ETH equivalent price of
  * a USDC value. This is done by checking the an ETH:USDC pool to find an ETH price of an
  * Owner defined USDC price.
- * 
+ *
  * Supports external memecoins with varying total supply.
  *
  * This ETH equivalent price is then cast against the memecoin supply to determine market
  * cap.
  */
 contract AnyMarketCappedPriceV3 is MarketCappedPriceV3 {
-
     /**
      * The struct of data that should be passed from the flaunching flow to define the
      * desired market cap when a token is flaunching.
@@ -42,17 +41,12 @@ contract AnyMarketCappedPriceV3 is MarketCappedPriceV3 {
      * @param _usdcToken The USDC token used in the Pool
      * @param _flaunchFeeExemption The {FlaunchFeeExemption} contract address
      */
-    constructor (
+    constructor(
         address _protocolOwner,
         address _ethToken,
         address _usdcToken,
         address _flaunchFeeExemption
-    ) MarketCappedPriceV3(
-        _protocolOwner,
-        _ethToken,
-        _usdcToken,
-        _flaunchFeeExemption
-    ) {}
+    ) MarketCappedPriceV3(_protocolOwner, _ethToken, _usdcToken, _flaunchFeeExemption) {}
 
     /**
      * Retrieves the stored `_initialSqrtPriceX96` value and provides the flipped or unflipped
@@ -63,7 +57,12 @@ contract AnyMarketCappedPriceV3 is MarketCappedPriceV3 {
      *
      * @return sqrtPriceX96_ The `sqrtPriceX96` value
      */
-    function getSqrtPriceX96(address /* _sender */, bool _flipped, bytes calldata _initialPriceParams) public view override returns (uint160 sqrtPriceX96_) {
+    function getSqrtPriceX96(
+        address,
+        /* _sender */
+        bool _flipped,
+        bytes calldata _initialPriceParams
+    ) public view override returns (uint160 sqrtPriceX96_) {
         uint totalSupply;
 
         // This initial price contract needs to support the initial price parameters passing both the tokenSupply and
@@ -90,8 +89,9 @@ contract AnyMarketCappedPriceV3 is MarketCappedPriceV3 {
      *
      * @return The `AnyMarketCappedPriceParams` struct
      */
-    function decodeData(bytes calldata _data) public pure returns (AnyMarketCappedPriceParams memory) {
+    function decodeData(
+        bytes calldata _data
+    ) public pure returns (AnyMarketCappedPriceParams memory) {
         return abi.decode(_data, (AnyMarketCappedPriceParams));
     }
-
 }

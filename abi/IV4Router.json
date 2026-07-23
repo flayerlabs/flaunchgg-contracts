@@ -1,0 +1,96 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "poolManager",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "contract IPoolManager"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "error",
+      "name": "InvalidHopSlippageLength",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "V4TooLittleReceived",
+      "inputs": [
+        {
+          "name": "minAmountOutReceived",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amountReceived",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "V4TooLittleReceivedPerHop",
+      "inputs": [
+        {
+          "name": "hopIndex",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "maxPrice",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "price",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "V4TooMuchRequested",
+      "inputs": [
+        {
+          "name": "maxAmountInRequested",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amountRequested",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "V4TooMuchRequestedPerHop",
+      "inputs": [
+        {
+          "name": "hopIndex",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "maxPrice",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "price",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ]
+}

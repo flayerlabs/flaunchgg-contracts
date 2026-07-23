@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-
 /**
  * Defines a range of `tstore` storage locations that will be used for swap event storage.
  */
 abstract contract StoreKeys {
-
     bytes32 internal constant TS_FL_AMOUNT0 = 0x17cab649bf7619b4535991407dcf8f717035632cf45997a05c0f90b7baafa479;
     bytes32 internal constant TS_FL_AMOUNT1 = 0x170e502bdc7039c895af9c291daf6592705d439a7873ee28dbc514d2f1aa51b3;
     bytes32 internal constant TS_FL_FEE0 = 0xaac705f00f1df487f4863cf5b7baa49be15a9dc73d477f33ca4d694d45cac7fe;

@@ -1,0 +1,532 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "calculateFee",
+      "inputs": [
+        {
+          "name": "_flaunchParams",
+          "type": "tuple",
+          "internalType": "struct IPositionManager.FlaunchParams",
+          "components": [
+            {
+              "name": "name",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "symbol",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "tokenUri",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "premineAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "creator",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "creatorFeeAllocation",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "flaunchAt",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "initialPriceParams",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "feeCalculatorParams",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "pairedToken",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        },
+        {
+          "name": "_slippage",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ethRequired_",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "pairedPremineCost_",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "deployAndInitializeManager",
+      "inputs": [
+        {
+          "name": "_managerImplementation",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_owner",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_data",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "_permissions",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "manager_",
+          "type": "address",
+          "internalType": "address payable"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "flaunch",
+      "inputs": [
+        {
+          "name": "_flaunchParams",
+          "type": "tuple",
+          "internalType": "struct IPositionManager.FlaunchParams",
+          "components": [
+            {
+              "name": "name",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "symbol",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "tokenUri",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "premineAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "creator",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "creatorFeeAllocation",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "flaunchAt",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "initialPriceParams",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "feeCalculatorParams",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "pairedToken",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        },
+        {
+          "name": "_treasuryManagerParams",
+          "type": "tuple",
+          "internalType": "struct IFlaunchZap.TreasuryManagerParams",
+          "components": [
+            {
+              "name": "manager",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "permissions",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "initializeData",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "depositData",
+              "type": "bytes",
+              "internalType": "bytes"
+            }
+          ]
+        },
+        {
+          "name": "_trustedFeeSigner",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_maxPremineCost",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "memecoin_",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "ethSpent_",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "deployedManager_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "flaunch",
+      "inputs": [
+        {
+          "name": "_flaunchParams",
+          "type": "tuple",
+          "internalType": "struct IPositionManager.FlaunchParams",
+          "components": [
+            {
+              "name": "name",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "symbol",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "tokenUri",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "premineAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "creator",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "creatorFeeAllocation",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "flaunchAt",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "initialPriceParams",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "feeCalculatorParams",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "pairedToken",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        },
+        {
+          "name": "_trustedFeeSigner",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_maxPremineCost",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "memecoin_",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "ethSpent_",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "flaunch",
+      "inputs": [
+        {
+          "name": "_flaunchParams",
+          "type": "tuple",
+          "internalType": "struct IPositionManager.FlaunchParams",
+          "components": [
+            {
+              "name": "name",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "symbol",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "tokenUri",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "premineAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "creator",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "creatorFeeAllocation",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "flaunchAt",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "initialPriceParams",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "feeCalculatorParams",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "pairedToken",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        },
+        {
+          "name": "_treasuryManagerParams",
+          "type": "tuple",
+          "internalType": "struct IFlaunchZap.TreasuryManagerParams",
+          "components": [
+            {
+              "name": "manager",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "permissions",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "initializeData",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "depositData",
+              "type": "bytes",
+              "internalType": "bytes"
+            }
+          ]
+        },
+        {
+          "name": "_trustedFeeSigner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "memecoin_",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "ethSpent_",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "deployedManager_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "flaunch",
+      "inputs": [
+        {
+          "name": "_flaunchParams",
+          "type": "tuple",
+          "internalType": "struct IPositionManager.FlaunchParams",
+          "components": [
+            {
+              "name": "name",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "symbol",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "tokenUri",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "premineAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "creator",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "creatorFeeAllocation",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "flaunchAt",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "initialPriceParams",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "feeCalculatorParams",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "pairedToken",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        },
+        {
+          "name": "_trustedFeeSigner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "memecoin_",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "ethSpent_",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "error",
+      "name": "CreatorCannotBeZero",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "Erc20PremineRequiresMaxCost",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TreasuryManagerFactoryNotSet",
+      "inputs": []
+    }
+  ]
+}

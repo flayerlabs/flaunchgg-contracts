@@ -5,12 +5,10 @@ import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
 
 import {ISubscriber} from '@flaunch-interfaces/ISubscriber.sol';
 
-
 /**
  * Empty Subscriber contract that can be extended from.
  */
 abstract contract BaseSubscriber is ISubscriber {
-
     error InvalidNotifier(address _sender, address _validNotifier);
 
     /// The Flaunch {Notifier} contract that will make approved calls
@@ -19,7 +17,9 @@ abstract contract BaseSubscriber is ISubscriber {
     /**
      * Sets our {Notifier} so that we can lock down all the calls.
      */
-    constructor (address _notifier) {
+    constructor(
+        address _notifier
+    ) {
         notifier = _notifier;
     }
 
@@ -28,7 +28,9 @@ abstract contract BaseSubscriber is ISubscriber {
      *
      * @dev This must return `true` to be subscribed.
      */
-    function subscribe(bytes memory /* _data */) public virtual onlyNotifier returns (bool) {
+    function subscribe(
+        bytes memory /* _data */
+    ) public virtual onlyNotifier returns (bool) {
         return false;
     }
 
@@ -42,19 +44,24 @@ abstract contract BaseSubscriber is ISubscriber {
     /**
      * Called when an action has been performed against a pool.
      */
-    function notify(PoolId /* _poolId */, bytes4 /* _key */, bytes calldata /* _data */) public virtual onlyNotifier {
+    function notify(
+        PoolId,
+        /* _poolId */
+        bytes4,
+        /* _key */
+        bytes calldata /* _data */
+    ) public virtual onlyNotifier {
         // ..
     }
 
     /**
      * Ensure that the caller is the {Notifier}.
      */
-    modifier onlyNotifier {
+    modifier onlyNotifier() {
         if (msg.sender != notifier) {
             revert InvalidNotifier(msg.sender, notifier);
         }
 
         _;
     }
-
 }

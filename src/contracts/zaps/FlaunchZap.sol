@@ -5,136 +5,57 @@ import {SafeTransferLib} from '@solady/utils/SafeTransferLib.sol';
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
-import {IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
-import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
+import {PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {SafeCast} from '@uniswap/v4-core/src/libraries/SafeCast.sol';
-import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
 
 import {Flaunch} from '@flaunch/Flaunch.sol';
-import {PoolSwap} from '@flaunch/zaps/PoolSwap.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
 import {TokenSupply} from '@flaunch/libraries/TokenSupply.sol';
-import {WhitelistFairLaunch} from '@flaunch/subscribers/WhitelistFairLaunch.sol';
 
-import {IFeeCalculator} from '@flaunch-interfaces/IFeeCalculator.sol';
-import {IFLETH} from '@flaunch-interfaces/IFLETH.sol';
-import {IMerkleAirdrop} from '@flaunch-interfaces/IMerkleAirdrop.sol';
+import {IFlaunchZap} from '@flaunch-interfaces/IFlaunchZap.sol';
+import {IPositionManager} from '@flaunch-interfaces/IPositionManager.sol';
 import {ITreasuryManager} from '@flaunch-interfaces/ITreasuryManager.sol';
 import {ITreasuryManagerFactory} from '@flaunch-interfaces/ITreasuryManagerFactory.sol';
 import {ITrustedSignerFeeCalculator} from '@flaunch-interfaces/ITrustedSignerFeeCalculator.sol';
 
-
 /**
- * Allows a token to be flaunched with all additional layers of customisation added to
- * facilitate a single transaction.
+ * Single-transaction entrypoint for flaunching a memecoin with optional extras that the
+ * {PositionManager} alone cannot provide: registering a trusted fee signer against the new pool
+ * and escrowing the Flaunch ERC721 into a treasury manager.
  *
- * @dev When new functionality is introduced, this zap should be updated with it and deployed
- * against to ensure we have a single contract as a flaunching entry point.
+ * The zap holds no funds between transactions: any ETH or memecoin it handles during a launch is
+ * forwarded or refunded before the call returns.
  */
-contract FlaunchZap {
+contract FlaunchZap is IFlaunchZap {
+    using PoolIdLibrary for PoolKey;
 
-    using SafeCast for uint;
-
-    error CreatorCannotBeZero();
-    error InsufficientMemecoinsForAirdrop();
-
-    /// The Flaunch {PositionManager} contract
+    /// The Flaunch {PositionManager} that launches are forwarded to
     PositionManager public immutable positionManager;
 
-    /// The Flaunch {Flaunch} contract
+    /// The {Flaunch} ERC721 that represents ownership of a flaunched pool
     Flaunch public immutable flaunchContract;
 
-    /// The underlying flETH token paired against the created token
-    IFLETH public immutable flETH;
-
-    /// The swap contract being used to perform the token buy
-    PoolSwap public immutable poolSwap;
-
-    /// Airdrop contracts
-    IMerkleAirdrop public immutable merkleAirdrop;
-
-    /// TreasuryManager contracts
+    /// The factory used to deploy / recognise treasury managers. May be `address(0)` on chains
+    /// where no factory has been deployed yet: manager flaunches then fall through to the
+    /// unknown-manager path (approve + best-effort deposit + transfer), and
+    /// {deployAndInitializeManager} reverts.
     ITreasuryManagerFactory public immutable treasuryManagerFactory;
 
-    /// Whitelist contracts
-    WhitelistFairLaunch public immutable whitelistFairLaunch;
-
     /**
-     * Allows the creator to disperse their premined tokens as a claimable airdrop.
+     * References the contract addresses for the Flaunch protocol.
      *
-     * @param airdropIndex The index of the airdrop
-     * @param airdropAmount The amount of memecoins to add to the airdrop
-     * @param airdropEndTime The timestamp at which the airdrop ends
-     * @param merkleRoot The merkle root for the airdrop
-     * @param merkleIPFSHash The IPFS hash of the merkle data
+     * @param _positionManager The Flaunch {PositionManager} contract
+     * @param _flaunchContract The {Flaunch} ERC721 contract
+     * @param _treasuryManagerFactory The {ITreasuryManagerFactory}, or `address(0)` if none exists
      */
-    struct AirdropParams {
-        uint airdropIndex;
-        uint airdropAmount;
-        uint airdropEndTime;
-        bytes32 merkleRoot;
-        string merkleIPFSHash;
-    }
-
-    /**
-     * If the manager is an approved implementation, then it's instance will be deployed. Otherwise
-     * the flaunch token will be transferred directly to the manager.
-     *
-     * @param manager The manager implementation to use
-     * @param permissions The permissions contract to use for a newly deployed manager
-     * @param initializeData The data to initialize the manager with
-     * @param depositData The data to deposit to the manager with
-     */
-    struct TreasuryManagerParams {
-        address manager;
-        address permissions;
-        bytes initializeData;
-        bytes depositData;
-    }
-
-    /**
-     * Creates a whitelist of users that can make swaps during fair launch.
-     *
-     * @param _merkleRoot The merkle root for the airdrop
-     * @param _merkleIPFSHash The IPFS hash of the merkle data
-     * @param _whitelistMaxTokens The amount of tokens a user can buy during whitelist
-     */
-    struct WhitelistParams {
-        bytes32 merkleRoot;
-        string merkleIPFSHash;
-        uint maxTokens;
-    }
-
-    /**
-     * Assigns the immutable contracts used by the zap.
-     *
-     * @param _positionManager Flaunch {PositionManager}
-     * @param _flaunchContract Flaunch contract
-     * @param _flETH Underlying flETH token
-     * @param _poolSwap Swap contract for premining
-     * @param _treasuryManagerFactory The Treasury Manager Factory contract
-     * @param _merkleAirdrop The contract to facilitate airdrops
-     * @param _whitelistFairLaunch The {WhitelistFairLaunch} contract address
-     */
-    constructor (
+    constructor(
         PositionManager _positionManager,
         Flaunch _flaunchContract,
-        IFLETH _flETH,
-        PoolSwap _poolSwap,
-        ITreasuryManagerFactory _treasuryManagerFactory,
-        IMerkleAirdrop _merkleAirdrop,
-        WhitelistFairLaunch _whitelistFairLaunch
+        ITreasuryManagerFactory _treasuryManagerFactory
     ) {
         positionManager = _positionManager;
         flaunchContract = _flaunchContract;
-        flETH = _flETH;
-        poolSwap = _poolSwap;
         treasuryManagerFactory = _treasuryManagerFactory;
-        merkleAirdrop = _merkleAirdrop;
-        whitelistFairLaunch = _whitelistFairLaunch;
     }
 
     /**
@@ -142,204 +63,246 @@ contract FlaunchZap {
      *
      * @param _flaunchParams The base flaunch parameters
      * @param _trustedFeeSigner Optional trusted fee signer for this memecoin
-     * @param _premineSwapHookData data passed to the premine swap hook, containing referrer & SignedMessage for trusted signer
      *
      * @return memecoin_ The created ERC20 token address
      * @return ethSpent_ The amount of ETH spent during the premine
-     * @return deployedManager_ The address of the manager that was deployed
      */
     function flaunch(
-        PositionManager.FlaunchParams memory _flaunchParams,
-        address _trustedFeeSigner,
-        bytes calldata _premineSwapHookData
-    ) external payable refundsEth returns (address memecoin_, uint ethSpent_, address) {
-        // Flaunch our token and capture the memecoin address
-        memecoin_ = _flaunch(_flaunchParams, _trustedFeeSigner);
-
-        // Allows the creator to premine their own token
-        if (_flaunchParams.premineAmount != 0) {
-            // Premine tokens to this contract
-            ethSpent_ = _premine(memecoin_, _flaunchParams.premineAmount, _premineSwapHookData);
-
-            // Send any remaining premined memecoins to the creator
-            uint remainingMemecoins = IERC20(memecoin_).balanceOf(address(this));
-            if (remainingMemecoins != 0) {
-                IERC20(memecoin_).transfer(_flaunchParams.creator, remainingMemecoins);
-            }
-        }
+        IPositionManager.FlaunchParams memory _flaunchParams,
+        address _trustedFeeSigner
+    ) external payable refundsEth returns (address memecoin_, uint ethSpent_) {
+        return _flaunch(_flaunchParams, _trustedFeeSigner);
     }
 
     /**
-     * Flaunches a memecoin whilst allowing for any additional logic.
+     * Flaunches a memecoin and escrows it into a treasury manager.
+     *
+     * The zap flaunches with itself as the temporary creator so that it receives the Flaunch
+     * ERC721, then wires the manager (see {_createWithManagerZap}) and deposits the token into it
+     * on behalf of the original creator. Any premined memecoin is swept to the original creator.
      *
      * @param _flaunchParams The base flaunch parameters
+     * @param _treasuryManagerParams Optional manager wiring for the new pool
      * @param _trustedFeeSigner Optional trusted fee signer for this memecoin
-     * @param _premineSwapHookData data passed to the premine swap hook, containing referrer & SignedMessage for trusted signer
-     * @param _whitelistParams Whitelist related flaunch logic
-     * @param _airdropParams Airdrop related flaunch logic
-     * @param _treasuryManagerParams Treasury Manager related flaunch logic
      *
      * @return memecoin_ The created ERC20 token address
      * @return ethSpent_ The amount of ETH spent during the premine
-     * @return deployedManager_ The address of the manager that was deployed
+     * @return deployedManager_ The manager the flaunch token was deposited into
      */
     function flaunch(
-        PositionManager.FlaunchParams memory _flaunchParams,
-        address _trustedFeeSigner,
-        bytes calldata _premineSwapHookData,
-        WhitelistParams calldata _whitelistParams,
-        AirdropParams calldata _airdropParams,
-        TreasuryManagerParams calldata _treasuryManagerParams
+        IPositionManager.FlaunchParams memory _flaunchParams,
+        TreasuryManagerParams calldata _treasuryManagerParams,
+        address _trustedFeeSigner
     ) external payable refundsEth returns (address memecoin_, uint ethSpent_, address deployedManager_) {
-        // Map the original creator throughout, even if it overwritten by a treasury manager
-        address creator = _flaunchParams.creator;
-        if (creator == address(0)) revert CreatorCannotBeZero();
-
-        // If we are setting up a TreasuryManager then we need to ensure that the creator is
-        // updated to this zap contract.
-        if (_treasuryManagerParams.manager != address(0)) {
-            _flaunchParams.creator = address(this);
-        }
-
-        // Flaunch our token and capture the memecoin address
-        memecoin_ = _flaunch(_flaunchParams, _trustedFeeSigner);
-
-        // Allows the creator to premine their own token
-        if (_flaunchParams.premineAmount != 0) {
-            // Premine tokens to this contract
-            ethSpent_ = _premine(memecoin_, _flaunchParams.premineAmount, _premineSwapHookData);
-
-            // Check if we are airdropping any of the tokens that we premined
-            if (_airdropParams.airdropAmount != 0) {
-                _airdrop(memecoin_, creator, _airdropParams);
-            }
-
-            // Send any remaining premined memecoins to the creator
-            uint remainingMemecoins = IERC20(memecoin_).balanceOf(address(this));
-            if (remainingMemecoins != 0) {
-                IERC20(memecoin_).transfer(creator, remainingMemecoins);
-            }
-        }
-
-        // If we have whitelist data for the flaunch, then we can create our whitelist logic. This
-        // must be done after tokens have been premined to prevent the premine from being rejected
-        // in the instance that the creator did not whitelist themselves.
-        if (_flaunchParams.initialTokenFairLaunch != 0 && _whitelistParams.merkleRoot != '') {
-            _createWhitelist(memecoin_, _whitelistParams);
-        }
-
-        // If we are transferring the token to a manager, then we can specify this here
-        if (_treasuryManagerParams.manager != address(0)) {
-            deployedManager_ = _createWithManagerZap(memecoin_, creator, _treasuryManagerParams);
-        }
+        return _flaunch(_flaunchParams, _treasuryManagerParams, _trustedFeeSigner);
     }
 
     /**
-     * Deploys an approved manager, initializes it and sets permissions in a single transaction.
+     * Deploys and initializes a manager instance from an approved implementation, setting its
+     * permissions before handing ownership to `_owner`.
      *
-     * @param _managerImplementation The address of the approved implementation
-     * @param _owner The owner address of the manager
-     * @param _data The initialization data for the deployed manager
-     * @param _permissions The permissions contract to use for the manager
+     * @param _managerImplementation The approved manager implementation to clone
+     * @param _owner The final owner of the deployed manager
+     * @param _data Initialization data passed to the manager
+     * @param _permissions The permissions contract set against the manager
      *
-     * @return manager_ The freshly deployed {TreasuryManager} contract address
+     * @return manager_ The deployed manager instance
      */
     function deployAndInitializeManager(
         address _managerImplementation,
         address _owner,
         bytes calldata _data,
         address _permissions
-    ) public returns (
-        address payable manager_
-    ) {
-        // Deploy our manager implementation
+    ) public returns (address payable manager_) {
+        if (address(treasuryManagerFactory) == address(0)) {
+            revert TreasuryManagerFactoryNotSet();
+        }
+
         manager_ = treasuryManagerFactory.deployAndInitializeManager({
             _managerImplementation: _managerImplementation,
             _owner: address(this),
             _data: _data
         });
 
-        // Set the permissions for the manager
         ITreasuryManager(manager_).setPermissions(_permissions);
-
-        // Set the owner to the actual owner
         ITreasuryManager(manager_).transferManagerOwnership(_owner);
     }
 
     /**
-     * Flaunches our base ERC20.
+     * Quotes the ETH a caller needs to supply for a launch: the flaunch fee plus the cost of any
+     * premine, with an optional slippage buffer applied on top.
      *
      * @param _flaunchParams The base flaunch parameters
-     * @param _trustedFeeSigner Custom trusted fee signer for this memecoin
+     * @param _slippage Optional slippage buffer, in basis points (100_00 == 100%)
      *
-     * @return memecoin_ The address of the flaunched ERC20 token
+     * @return ethRequired_ The ETH the caller must send with the launch
      */
-    function _flaunch(PositionManager.FlaunchParams memory _flaunchParams, address _trustedFeeSigner) internal returns (address memecoin_) {
-        // if no trusted fee signer is provided, then we flaunch as normal
-        if (_trustedFeeSigner == address(0)) {
-            memecoin_ = positionManager.flaunch{value: msg.value}(_flaunchParams);
-        } else {
-            // `setTrustedPoolKeySigner` can only be called by the current creator
-            // so we make this contract as the creator for now
+    function calculateFee(
+        IPositionManager.FlaunchParams memory _flaunchParams,
+        uint _slippage
+    ) public view returns (uint ethRequired_) {
+        uint premineCost = positionManager.getFlaunchingMarketCap(_flaunchParams.initialPriceParams) * _flaunchParams.premineAmount
+            / TokenSupply.INITIAL_SUPPLY;
 
-            // in case we are flaunching into a treasury manager, the creator is already temporarily set as this contract
-            address originalCreator = _flaunchParams.creator;
-            if (originalCreator != address(this)) {
-                _flaunchParams.creator = address(this);
-            }
+        ethRequired_ = positionManager.getFlaunchingFee(_flaunchParams.initialPriceParams) + premineCost;
+        if (_slippage != 0) {
+            ethRequired_ += ethRequired_ * _slippage / 100_00;
+        }
+    }
 
-            // flaunch the token
-            memecoin_ = positionManager.flaunch{value: msg.value}(_flaunchParams);
-            
-            // set the trusted fee signer for this memecoin
-            ITrustedSignerFeeCalculator(address(positionManager.getFeeCalculator(true))).setTrustedPoolKeySigner({
-                _poolKey: positionManager.poolKey(memecoin_),
-                _signer: _trustedFeeSigner
-            });
+    /**
+     * Convenience wrapper for launches without a treasury manager.
+     *
+     * @param _flaunchParams The base flaunch parameters
+     * @param _trustedFeeSigner Optional trusted fee signer for this memecoin
+     *
+     * @return memecoin_ The created ERC20 token address
+     * @return ethSpent_ The amount of ETH spent during the premine
+     */
+    function _flaunch(
+        IPositionManager.FlaunchParams memory _flaunchParams,
+        address _trustedFeeSigner
+    ) internal returns (address memecoin_, uint ethSpent_) {
+        // A zero-value manager struct means no manager is wired for this launch
+        TreasuryManagerParams memory noManagerParams;
+        (memecoin_, ethSpent_,) = _flaunch(_flaunchParams, noManagerParams, _trustedFeeSigner);
+    }
 
-            // if the creator was not this contract, we need to send the flaunch NFT to the original creator
-            if (originalCreator != address(this)) {
-                flaunchContract.transferFrom(
-                    address(this),
-                    originalCreator,
-                    flaunchContract.tokenId(memecoin_)
-                );
+    /**
+     * The core launch routine that all entrypoints funnel into: flaunches the memecoin, reports
+     * the ETH spent and, if requested, escrows the flaunched token into a treasury manager.
+     *
+     * @param _flaunchParams The base flaunch parameters
+     * @param _treasuryManagerParams Optional manager wiring for the new pool
+     * @param _trustedFeeSigner Optional trusted fee signer for this memecoin
+     *
+     * @return memecoin_ The created ERC20 token address
+     * @return ethSpent_ The amount of ETH spent during the premine
+     * @return deployedManager_ The manager the flaunch token was deposited into
+     */
+    function _flaunch(
+        IPositionManager.FlaunchParams memory _flaunchParams,
+        TreasuryManagerParams memory _treasuryManagerParams,
+        address _trustedFeeSigner
+    ) internal returns (address memecoin_, uint ethSpent_, address deployedManager_) {
+        address originalCreator = _flaunchParams.creator;
+        if (originalCreator == address(0)) {
+            revert CreatorCannotBeZero();
+        }
+
+        // When a manager is requested, the zap becomes the temporary creator so that it receives
+        // the Flaunch ERC721 (and any premine) and can deposit the token into the manager. The
+        // trusted-signer path inside {_flaunchMemecoin} sees `creator == address(this)` and skips
+        // its own NFT return / premine sweep, so both are handled exclusively below.
+        bool hasManager = _treasuryManagerParams.manager != address(0);
+        if (hasManager) {
+            _flaunchParams.creator = address(this);
+        }
+
+        memecoin_ = _flaunchMemecoin(_flaunchParams, _trustedFeeSigner);
+
+        // The ETH spent is the flaunch fee plus the ETH-funded premine cost
+        ethSpent_ = positionManager.getFlaunchingFee(_flaunchParams.initialPriceParams)
+            + (positionManager.getFlaunchingMarketCap(_flaunchParams.initialPriceParams)
+                * _flaunchParams.premineAmount
+                / TokenSupply.INITIAL_SUPPLY);
+
+        if (hasManager) {
+            deployedManager_ = _createWithManagerZap(memecoin_, originalCreator, _treasuryManagerParams);
+
+            // The manager takes only the ERC721; any premine was delivered to the zap as the
+            // temporary creator, so sweep it to the original creator so it is not stranded.
+            uint memecoinBalance = IERC20(memecoin_).balanceOf(address(this));
+            if (memecoinBalance != 0) {
+                SafeTransferLib.safeTransfer(memecoin_, originalCreator, memecoinBalance);
             }
         }
     }
 
     /**
-     * If we have a treasury manager defined, then we process additional logic to transfer the ERC721
-     * to the defined Treasury Manager contract.
+     * Performs the {PositionManager} flaunch call, registering a trusted fee signer against the
+     * created pool if one was supplied.
      *
-     * @dev If the manager is an approved implementation, then it's instance will be deployed. Otherwise
-     * the flaunch token will _try_ to deposit the token, but fallback to transferring directly to the
-     * manager if the deposit fails.
+     * Registering a signer can only be done by the pool creator, so the zap makes itself the
+     * temporary creator for the launch and afterwards forwards the ERC721 and any premined
+     * memecoin to the original creator. If the creator was already set to this zap by the manager
+     * flow, that forwarding is skipped and ownership is handled by the caller instead.
      *
-     * @param _memecoin The address of the flaunched ERC20
-     * @param _creator The original creator of the ERC721
-     * @param _treasuryManagerParams Treasury Manager related flaunch logic
+     * @param _flaunchParams The base flaunch parameters
+     * @param _trustedFeeSigner Optional trusted fee signer for this memecoin
      *
-     * @return deployedManager_ The address of the manager that the ERC721 has been sent to
+     * @return memecoin_ The created ERC20 token address
+     */
+    function _flaunchMemecoin(
+        IPositionManager.FlaunchParams memory _flaunchParams,
+        address _trustedFeeSigner
+    ) internal returns (address memecoin_) {
+        // Without a signer there is nothing for the zap to do post-launch; forward the call as-is
+        if (_trustedFeeSigner == address(0)) {
+            memecoin_ = positionManager.flaunch{value: msg.value}(_flaunchParams);
+            return memecoin_;
+        }
+
+        // Become the temporary creator so that the zap is allowed to register the signer
+        address originalCreator = _flaunchParams.creator;
+        if (originalCreator != address(this)) {
+            _flaunchParams.creator = address(this);
+        }
+
+        memecoin_ = positionManager.flaunch{value: msg.value}(_flaunchParams);
+
+        // Register the trusted signer against the pool that was just created
+        PoolKey memory createdPoolKey = positionManager.poolKey(memecoin_);
+        ITrustedSignerFeeCalculator(address(positionManager.feeCalculator()))
+            .setTrustedPoolKeySigner({_poolKey: createdPoolKey, _signer: _trustedFeeSigner});
+
+        // Forward the Flaunch ERC721 to the original creator
+        if (originalCreator != address(this)) {
+            flaunchContract.transferFrom(address(this), originalCreator, flaunchContract.tokenId(memecoin_));
+        }
+
+        // The premine is delivered to the flaunch `creator`, which is temporarily set to this
+        // zap so it can register the trusted signer. Sweep any premined memecoin back to the
+        // original creator so it is not stranded in the zap.
+        uint memecoinBalance = IERC20(memecoin_).balanceOf(address(this));
+        if (memecoinBalance != 0 && originalCreator != address(this)) {
+            SafeTransferLib.safeTransfer(memecoin_, originalCreator, memecoinBalance);
+        }
+    }
+
+    /**
+     * Escrows a freshly flaunched token (held by this zap as the temporary creator) into a
+     * treasury manager, dispatching on what the manager address is:
+     *
+     *  1. An approved manager implementation -> deploy + initialize a fresh instance through the
+     *     factory and deposit into it, optionally applying permissions before handing the manager
+     *     ownership to the creator.
+     *  2. An instance previously deployed by the factory -> deposit into it directly.
+     *  3. An unknown address -> best-effort `deposit` and, if the zap still holds the ERC721
+     *     afterwards, transfer it to the address directly.
+     *
+     * If no factory is bound to this zap (`address(0)`), every manager routes through (3).
+     *
+     * @param _memecoin The flaunched memecoin whose ERC721 is being escrowed
+     * @param _creator The original creator that the deposit is made on behalf of
+     * @param _treasuryManagerParams The manager wiring requested by the caller
+     *
+     * @return deployedManager_ The manager the flaunch token was deposited into
      */
     function _createWithManagerZap(
         address _memecoin,
         address _creator,
-        TreasuryManagerParams calldata _treasuryManagerParams
+        TreasuryManagerParams memory _treasuryManagerParams
     ) internal returns (address deployedManager_) {
-        // Get the token ID of the flaunch token
         uint tokenId = flaunchContract.tokenId(_memecoin);
+        ITreasuryManager.FlaunchToken memory flaunchToken =
+            ITreasuryManager.FlaunchToken({flaunch: flaunchContract, tokenId: tokenId});
 
-        // Define our FlaunchToken
-        ITreasuryManager.FlaunchToken memory flaunchToken = ITreasuryManager.FlaunchToken({
-            flaunch: flaunchContract,
-            tokenId: tokenId
-        });
+        bool hasFactory = address(treasuryManagerFactory) != address(0);
 
-        // If the manager address is an approved implementation, then we will deploy a new manager from the implementation
-        // and then deposit the Flaunch Token into the manager.
-        if (treasuryManagerFactory.approvedManagerImplementation(_treasuryManagerParams.manager)) {
-            // If it is a valid manager implementation, deploy a new instance
+        if (hasFactory && treasuryManagerFactory.approvedManagerImplementation(_treasuryManagerParams.manager)) {
+            // If permissions will be applied, the zap must own the manager while it sets them, and
+            // only hands ownership to the creator afterwards.
             address initialOwner = _treasuryManagerParams.permissions == address(0) ? _creator : address(this);
             deployedManager_ = treasuryManagerFactory.deployAndInitializeManager({
                 _managerImplementation: _treasuryManagerParams.manager,
@@ -347,229 +310,52 @@ contract FlaunchZap {
                 _data: _treasuryManagerParams.initializeData
             });
 
-            // Approve the deployed manager to pull the flaunch token during deposit
             flaunchContract.approve(deployedManager_, tokenId);
-
-            // Deposit our FlaunchToken into the manager
             ITreasuryManager(deployedManager_).deposit({
                 _flaunchToken: flaunchToken,
                 _creator: _creator,
                 _data: _treasuryManagerParams.depositData
             });
 
-            // if permissions are provided for the new manager, then set them
             if (_treasuryManagerParams.permissions != address(0)) {
                 ITreasuryManager(deployedManager_).setPermissions(_treasuryManagerParams.permissions);
-
-                // transfer ownership to the creator
                 ITreasuryManager(deployedManager_).transferManagerOwnership(_creator);
             }
-        }
-        // If the manager address was previously deployed via the {TreasuryManagerFactory} from an approved implementation, then we
-        // can deposit the Flaunch Token into the manager.
-        else if (treasuryManagerFactory.managerImplementation(_treasuryManagerParams.manager) != address(0)) {
-            // Approve the manager to pull the flaunch token during deposit
+        } else if (hasFactory && treasuryManagerFactory.managerImplementation(_treasuryManagerParams.manager) != address(0)) {
             flaunchContract.approve(_treasuryManagerParams.manager, tokenId);
-
-            // Deposit our FlaunchToken into the manager
+            deployedManager_ = _treasuryManagerParams.manager;
             ITreasuryManager(deployedManager_).deposit({
                 _flaunchToken: flaunchToken,
                 _creator: _creator,
                 _data: _treasuryManagerParams.depositData
             });
-
-            deployedManager_ = _treasuryManagerParams.manager;
-        }
-        // If the address is not known to the {TreasuryManagerFactory}, then we can attempt to deposit it, and then fallback to
-        // transferring directly to the manager contract address specified.
-        else {
-            // Approve the manager to pull the flaunch token during deposit
+        } else {
             flaunchContract.approve(_treasuryManagerParams.manager, tokenId);
 
-            // Try to deposit the Flaunch Token into the manager. If this function is not supported by the external manager, then
-            // we will fallback to a direct transfer.
-            try ITreasuryManager(_treasuryManagerParams.manager).deposit(flaunchToken, _creator, _treasuryManagerParams.depositData) {
-                // ..
-            } catch {}
+            try ITreasuryManager(_treasuryManagerParams.manager).deposit(
+                flaunchToken, _creator, _treasuryManagerParams.depositData
+            ) {} catch {}
 
-            // If deposit fails, fallback to direct transfer. We cannot put this in the `catch`, as we could hit the `fallback` function
-            // in the manager contract.
             if (flaunchContract.ownerOf(tokenId) == address(this)) {
                 flaunchContract.transferFrom(address(this), _treasuryManagerParams.manager, tokenId);
             }
 
-            // Set the deployed manager to the manager address specified
             deployedManager_ = _treasuryManagerParams.manager;
         }
     }
 
     /**
-     * If a whitelist merkle has been provided, register a whitelist of users that will be able
-     * to claim from the fair launch allocation.
-     *
-     * @param _memecoin The address of the flaunched ERC20
-     * @param _whitelistParams Whitelist related flaunch logic
+     * Refunds any ETH left in the zap after the call to the caller, so nothing is stranded.
      */
-    function _createWhitelist(address _memecoin, WhitelistParams calldata _whitelistParams) internal {
-        whitelistFairLaunch.setWhitelist({
-            _poolId: positionManager.poolKey(_memecoin).toId(),
-            _root: _whitelistParams.merkleRoot,
-            _ipfs: _whitelistParams.merkleIPFSHash,
-            _maxTokens: _whitelistParams.maxTokens
-        });
-    }
-
-    /**
-     * If we have a premine amount provided, the creator can purchase some of their initial fair
-     * launch supply during the same transaction.
-     *
-     * @param _memecoin The address of the flaunched ERC20
-     * @param _premineAmount The amount of tokens the user wants to purchase from initial supply
-     * @param _premineSwapHookData data passed to the premine swap hook, containing referrer & SignedMessage for trusted signer
-     *
-     * @return ethSpent_ The amount of ETH spent during the premine
-     */
-    function _premine(address _memecoin, uint _premineAmount, bytes calldata _premineSwapHookData) internal returns (uint ethSpent_) {
-        // Capture the PoolKey that was created during the 'flaunch'
-        PoolKey memory _poolKey = positionManager.poolKey(_memecoin);
-
-        // Calculate the amount of ETH being used for the premine
-        uint _ethAmount = payable(address(this)).balance;
-
-        // Wrapping ETH into flETH
-        flETH.deposit{value: _ethAmount}(0);
-
-        // Check if we have a flipped pool
-        bool flipped = Currency.unwrap(_poolKey.currency0) != address(flETH);
-
-        // Give {PoolSwap} unlimited flETH allowance if we don't already have a
-        // sufficient allowance.
-        if (flETH.allowance(address(this), address(poolSwap)) < _ethAmount) {
-            flETH.approve(address(poolSwap), type(uint).max);
-        }
-
-        // Action our swap on the {PoolSwap} contract with max range
-        BalanceDelta delta = poolSwap.swap({
-            _key: _poolKey,
-            _params: IPoolManager.SwapParams({
-                zeroForOne: !flipped,
-                amountSpecified: _premineAmount.toInt256(),
-                sqrtPriceLimitX96: !flipped
-                    ? TickMath.MIN_SQRT_PRICE + 1
-                    : TickMath.MAX_SQRT_PRICE - 1
-            }),
-            _hookData: _premineSwapHookData
-        });
-
-        // Calculate the amount of flETH swapped from the delta
-        ethSpent_ = uint128(!flipped ? -delta.amount0() : -delta.amount1());
-
-        // If there is ETH remaining after the user has made their swap, then we want
-        // to unwrap it back into ETH so that the calling function can return it.
-        uint remainingETH = _ethAmount - ethSpent_;
-        if (remainingETH != 0) {
-            flETH.withdraw(remainingETH);
-        }
-    }
-
-    /**
-     * If an airdrop merkle has been provided and some amount of tokens have been premined, we create
-     * an airdrop that allows the addresses present in the merkle to claim them.
-     *
-     * @param _memecoin The address of the flaunched ERC20
-     * @param _creator The original creator of the ERC721
-     * @param _airdropParams Airdrop related flaunch logic
-     */
-    function _airdrop(address _memecoin, address _creator, AirdropParams calldata _airdropParams) internal {
-        // Find the total number of tokens that we premined
-        uint memecoinsPremined = IERC20(_memecoin).balanceOf(address(this));
-
-        // Ensure that the number of tokens that we premined will cover the amount that the
-        // creator has requested that we airdrop.
-        if (memecoinsPremined < _airdropParams.airdropAmount) {
-            revert InsufficientMemecoinsForAirdrop();
-        }
-
-        // Add the memecoin airdrop to the merkle airdrop contract
-        IERC20(_memecoin).approve(address(merkleAirdrop), _airdropParams.airdropAmount);
-        merkleAirdrop.addAirdrop({
-            _creator: _creator,
-            _airdropIndex: _airdropParams.airdropIndex,
-            _token: _memecoin,
-            _amount: _airdropParams.airdropAmount,
-            _airdropEndTime: _airdropParams.airdropEndTime,
-            _merkleRoot: _airdropParams.merkleRoot,
-            _merkleDataIPFSHash: _airdropParams.merkleIPFSHash
-        });
-    }
-
-    /**
-     * Calculates the fee that will be required to use the zap with the specified premine. This allows
-     * for a slippage amount to be set, just incase we want to provide some buffer on the call.
-     *
-     * @param _premineAmount The number of tokens to be premined
-     * @param _slippage The slippage percentage with 2dp
-     *
-     * @return ethRequired_ The amount of ETH that will be required
-     */
-    function calculateFee(uint _premineAmount, uint _slippage, bytes calldata _initialPriceParams) public view returns (uint ethRequired_) {
-        // Market cap / total supply * premineAmount + swapFee
-        uint premineCost = positionManager.getFlaunchingMarketCap(_initialPriceParams) * _premineAmount / TokenSupply.INITIAL_SUPPLY;
-
-        // Create a fake pool key, just to generate an non-existant ID to check against
-        PoolKey memory fakePoolKey = PoolKey({
-            currency0: Currency.wrap(address(0)),
-            currency1: Currency.wrap(address(0)),
-            fee: 0,
-            tickSpacing: 60,
-            hooks: IHooks(address(0))
-        });
-
-        // Calculate swap fee
-        IFeeCalculator feeCalculator = positionManager.getFeeCalculator(true);
-        uint24 baseSwapFee = positionManager.getPoolFeeDistribution(fakePoolKey.toId()).swapFee;
-        if (address(feeCalculator) != address(0)) {
-            baseSwapFee = feeCalculator.determineSwapFee({
-                _poolKey: fakePoolKey,
-                _params: IPoolManager.SwapParams({
-                    zeroForOne: false,
-                    amountSpecified: _premineAmount.toInt256(),
-                    sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE
-                }),
-                _baseFee: baseSwapFee
-            });
-        }
-
-        // Set our base requirement of fee and premine market cost
-        ethRequired_ = positionManager.getFlaunchingFee(_initialPriceParams) + premineCost;
-
-        // Add our fee if present
-        if (baseSwapFee != 0) {
-            ethRequired_ += premineCost * baseSwapFee / 100_00;
-        }
-
-        // Add slippage
-        if (_slippage != 0) {
-            ethRequired_ += ethRequired_ * _slippage / 100_00;
-        }
-    }
-
-    /**
-     * Returns any ETH remaining in the contract to the `msg.sender` after the transaction.
-     */
-    modifier refundsEth {
+    modifier refundsEth() {
         _;
 
-        // Refund the remaining ETH
         uint remainingBalance = payable(address(this)).balance;
         if (remainingBalance != 0) {
             SafeTransferLib.safeTransferETH(msg.sender, remainingBalance);
         }
     }
 
-    /**
-     * To receive ETH from flETH on withdraw.
-     */
+    /// Allows the {PositionManager} to refund unspent ETH during a launch
     receive() external payable {}
-
 }

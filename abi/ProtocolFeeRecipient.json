@@ -50,6 +50,40 @@
     },
     {
       "type": "function",
+      "name": "claimToken",
+      "inputs": [
+        {
+          "name": "_feeEscrow",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_unwrap",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "_payoutToken",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_recipient",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "amount_",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
       "name": "completeOwnershipHandover",
       "inputs": [
         {

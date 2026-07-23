@@ -1,10 +1,15 @@
 @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
 @openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
 @optimism/=lib/optimism/packages/contracts-bedrock/
+interfaces/=lib/optimism/packages/contracts-bedrock/interfaces/
 @solady/=lib/solady/src/
+solady-test/=lib/solady/test/
 @uniswap/v3-core/=lib/v3-core/
-@uniswap/v4-core/=lib/v4-core/
-@uniswap-periphery/=lib/v4-periphery/src/
+@uniswap/v4-core/=lib/v4-hooks-public/lib/v4-periphery/lib/v4-core/
+@uniswap-periphery/=lib/v4-hooks-public/lib/v4-periphery/src/
+@uniswap-hooks/=lib/v4-hooks-public/src/
+
+solmate/=lib/optimism/packages/contracts-bedrock/lib/solmate/
 
 @flaunch/=src/contracts/
 @flaunch-interfaces/=src/interfaces/

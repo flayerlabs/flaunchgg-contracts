@@ -1,23 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
+import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {PoolIdLibrary, PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
 
-import {FeeEscrow} from '@flaunch/escrows/FeeEscrow.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
 import {ProtocolFeeRecipient} from '@flaunch/ProtocolFeeRecipient.sol';
+import {FeeEscrow} from '@flaunch/escrows/FeeEscrow.sol';
 
 import {FlaunchTest} from './FlaunchTest.sol';
-
+import {IPositionManager} from '@flaunch-interfaces/IPositionManager.sol';
 
 contract ProtocolFeeRecipientTest is FlaunchTest {
-
     using PoolIdLibrary for PoolKey;
 
     ProtocolFeeRecipient protocolFeeRecipient;
 
-    constructor () {
+    constructor() {
         _deployPlatform();
 
         // Deploy our {ProtocolFeeRecipient}
@@ -28,7 +27,11 @@ contract ProtocolFeeRecipientTest is FlaunchTest {
         flETH.deposit{value: type(uint128).max}(0);
     }
 
-    function test_CanGetAvailable(uint64 _eth, uint64 _pm1, uint64 _pm2) public {
+    function test_CanGetAvailable(
+        uint64 _eth,
+        uint64 _pm1,
+        uint64 _pm2
+    ) public {
         deal(address(protocolFeeRecipient), _eth);
 
         FeeEscrow feeEscrow1 = new FeeEscrow(address(flETH), address(indexer));
@@ -60,7 +63,11 @@ contract ProtocolFeeRecipientTest is FlaunchTest {
         assertEq(payable(address(protocolFeeRecipient)).balance, uint(_eth));
     }
 
-    function test_CanClaim(uint64 _eth, uint64 _pm1, uint64 _pm2) public {
+    function test_CanClaim(
+        uint64 _eth,
+        uint64 _pm1,
+        uint64 _pm2
+    ) public {
         // Set a recipient and ensure they start with zero ETH
         address payable _recipient = payable(address(420));
         deal(_recipient, 0);
@@ -124,8 +131,9 @@ contract ProtocolFeeRecipientTest is FlaunchTest {
     }
 
     function _flaunchToken() internal returns (PoolId poolId_) {
-        address memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', 0, 0, 0, address(this), 0, 0, abi.encode(''), abi.encode(1_000)));
+        address memecoin = positionManager.flaunch(
+            IPositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', 0, address(this), 0, 0, abi.encode(''), abi.encode(1_000))
+        );
         return positionManager.poolKey(memecoin).toId();
     }
-
 }

@@ -1,0 +1,125 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "feeExemption",
+      "inputs": [
+        {
+          "name": "_beneficiary",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct IFeeExemptions.FeeExemption",
+          "components": [
+            {
+              "name": "flatFee",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "enabled",
+              "type": "bool",
+              "internalType": "bool"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "removeFeeExemption",
+      "inputs": [
+        {
+          "name": "_beneficiary",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setFeeExemption",
+      "inputs": [
+        {
+          "name": "_beneficiary",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_flatFee",
+          "type": "uint24",
+          "internalType": "uint24"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "BeneficiaryFeeRemoved",
+      "inputs": [
+        {
+          "name": "_beneficiary",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "BeneficiaryFeeSet",
+      "inputs": [
+        {
+          "name": "_beneficiary",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "_flatFee",
+          "type": "uint24",
+          "indexed": false,
+          "internalType": "uint24"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "FeeExemptionInvalid",
+      "inputs": [
+        {
+          "name": "_invalidFee",
+          "type": "uint24",
+          "internalType": "uint24"
+        },
+        {
+          "name": "_maxFee",
+          "type": "uint24",
+          "internalType": "uint24"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NoBeneficiaryExemption",
+      "inputs": [
+        {
+          "name": "_beneficiary",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    }
+  ]
+}

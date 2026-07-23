@@ -1,0 +1,52 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "deploy",
+      "inputs": [
+        {
+          "name": "_salt",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "_initCode",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "deployed_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "predict",
+      "inputs": [
+        {
+          "name": "_salt",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "_sender",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "deployed_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    }
+  ]
+}

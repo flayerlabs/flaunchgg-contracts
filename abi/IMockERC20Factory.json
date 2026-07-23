@@ -1,0 +1,23 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "deployedTokens",
+      "inputs": [
+        {
+          "name": "_token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "exists_",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    }
+  ]
+}

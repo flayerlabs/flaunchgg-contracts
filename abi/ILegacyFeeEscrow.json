@@ -1,0 +1,17 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "nativeToken",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    }
+  ]
+}

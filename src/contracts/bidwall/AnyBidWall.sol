@@ -6,13 +6,15 @@ import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 import {AnyPositionManager} from '@flaunch/AnyPositionManager.sol';
 import {BidWall} from '@flaunch/bidwall/BidWall.sol';
 
-
 /**
  * A BidWall that uses the `AnyPositionManager` contract to get the treasury address for a given memecoin.
  */
 contract AnyBidWall is BidWall {
-
-    constructor (address _nativeToken, address _poolManager, address _protocolOwner) BidWall(_nativeToken, _poolManager, _protocolOwner) {
+    constructor(
+        address _nativeToken,
+        address _poolManager,
+        address _protocolOwner
+    ) BidWall(_nativeToken, _poolManager, _protocolOwner) {
         // ..
     }
 
@@ -24,7 +26,10 @@ contract AnyBidWall is BidWall {
      *
      * @return memecoinTreasury_ The treasury address for the memecoin
      */
-    function _getMemecoinTreasury(PoolKey memory _poolKey, address _memecoin) internal view override returns (address memecoinTreasury_) {
+    function _getMemecoinTreasury(
+        PoolKey memory _poolKey,
+        address _memecoin
+    ) internal view override returns (address memecoinTreasury_) {
         memecoinTreasury_ = AnyPositionManager(payable(address(_poolKey.hooks))).flaunchContract().memecoinTreasury(_memecoin);
     }
 
@@ -36,7 +41,10 @@ contract AnyBidWall is BidWall {
      *
      * @return creator_ The creator address for the memecoin
      */
-    function _getMemecoinCreator(PoolKey memory _poolKey, address _memecoin) internal view override returns (address creator_) {
+    function _getMemecoinCreator(
+        PoolKey memory _poolKey,
+        address _memecoin
+    ) internal view override returns (address creator_) {
         creator_ = AnyPositionManager(payable(address(_poolKey.hooks))).flaunchContract().creator(_memecoin);
     }
 }

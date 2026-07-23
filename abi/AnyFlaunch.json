@@ -133,7 +133,7 @@
         {
           "name": "_params",
           "type": "tuple",
-          "internalType": "struct AnyPositionManager.FlaunchParams",
+          "internalType": "struct IAnyPositionManager.FlaunchParams",
           "components": [
             {
               "name": "memecoin",
@@ -203,7 +203,7 @@
         {
           "name": "_positionManager",
           "type": "address",
-          "internalType": "contract AnyPositionManager"
+          "internalType": "contract IAnyPositionManager"
         },
         {
           "name": "_memecoinTreasuryImplementation",
@@ -412,7 +412,7 @@
         {
           "name": "",
           "type": "address",
-          "internalType": "contract AnyPositionManager"
+          "internalType": "contract IAnyPositionManager"
         }
       ],
       "stateMutability": "view"

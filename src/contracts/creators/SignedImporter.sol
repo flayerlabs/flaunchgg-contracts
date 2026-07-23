@@ -3,19 +3,19 @@ pragma solidity ^0.8.26;
 
 import {Ownable} from '@solady/auth/Ownable.sol';
 
-import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import {ECDSA} from '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
 import {MessageHashUtils} from '@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol';
+import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
+import {IAnyPositionManager} from '@flaunch-interfaces/IAnyPositionManager.sol';
+import {IPositionManager} from '@flaunch-interfaces/IPositionManager.sol';
 import {AnyPositionManager} from '@flaunch/AnyPositionManager.sol';
-
 
 /**
  * This contract allows users to import their memecoin to the AnyPositionManager. When importing
  * a memecoin, we will verify that the creator of the memecoin is authorized by a trusted signer.
  */
 contract SignedImporter is Ownable {
-
     using EnumerableSet for EnumerableSet.AddressSet;
     using ECDSA for bytes32;
     using MessageHashUtils for bytes32;
@@ -34,7 +34,7 @@ contract SignedImporter is Ownable {
 
     /**
      * This struct is used to store and represent the signed message.
-     * 
+     *
      * @param token The address of the token to verify
      * @param creator The address of the creator to verify
      * @param deadline The deadline of the signed message
@@ -54,14 +54,16 @@ contract SignedImporter is Ownable {
     AnyPositionManager public anyPositionManager;
 
     /// Stores the signatures that have been used
-    mapping (bytes32 _signature => bool _used) internal _usedSignatures;
+    mapping(bytes32 _signature => bool _used) internal _usedSignatures;
 
     /**
      * Sets the required contract addresses and the owner of the contract.
      *
      * @param _anyPositionManager The address of the AnyPositionManager contract
      */
-    constructor (address payable _anyPositionManager) {
+    constructor(
+        address payable _anyPositionManager
+    ) {
         _initializeOwner(msg.sender);
 
         // Validate and set the AnyPositionManager contract
@@ -75,9 +77,13 @@ contract SignedImporter is Ownable {
      * @param _initialMarketCap The initial market cap of the memecoin in USDC
      * @param _verificationData abi encoded SignedMessage
      */
-    function initialize(uint24 _creatorFeeAllocation, uint _initialMarketCap, bytes memory _verificationData) public {
+    function initialize(
+        uint24 _creatorFeeAllocation,
+        uint _initialMarketCap,
+        bytes memory _verificationData
+    ) public {
         // Verify signature & check that the caller is the creator
-        address memecoin =_verifySignature(_verificationData);
+        address memecoin = _verifySignature(_verificationData);
 
         // Ensure that the memecoin is not a zero address
         if (memecoin == address(0)) {
@@ -86,7 +92,7 @@ contract SignedImporter is Ownable {
 
         // Flaunch our token into the AnyPositionManager
         anyPositionManager.flaunch(
-            AnyPositionManager.FlaunchParams({
+            IAnyPositionManager.FlaunchParams({
                 memecoin: memecoin,
                 creator: msg.sender,
                 creatorFeeAllocation: _creatorFeeAllocation,
@@ -100,10 +106,12 @@ contract SignedImporter is Ownable {
 
     /**
      * Adds a signer to the trusted signers list.
-     * 
+     *
      * @param _signer The address to add as a trusted signer
      */
-    function addTrustedSigner(address _signer) external onlyOwner {
+    function addTrustedSigner(
+        address _signer
+    ) external onlyOwner {
         // Verify that the signer is not the zero address
         if (_signer == address(0)) {
             revert InvalidSigner(_signer);
@@ -114,16 +122,18 @@ contract SignedImporter is Ownable {
         if (!_trustedSigners.add(_signer)) {
             revert SignerAlreadyAdded(_signer);
         }
-        
+
         emit TrustedSignerUpdated(_signer, true);
     }
 
     /**
      * Removes a signer from the trusted signers list.
-     * 
+     *
      * @param _signer The address to remove as a trusted signer
      */
-    function removeTrustedSigner(address _signer) external onlyOwner {
+    function removeTrustedSigner(
+        address _signer
+    ) external onlyOwner {
         if (!_trustedSigners.remove(_signer)) {
             revert SignerDoesNotExist(_signer);
         }
@@ -136,9 +146,13 @@ contract SignedImporter is Ownable {
      *
      * @param _anyPositionManager The address of the AnyPositionManager contract
      */
-    function setAnyPositionManager(address payable _anyPositionManager) public onlyOwner {
+    function setAnyPositionManager(
+        address payable _anyPositionManager
+    ) public onlyOwner {
         // Ensure that our required contracts are not the zero address
-        if (_anyPositionManager == address(0)) revert ZeroAddress();
+        if (_anyPositionManager == address(0)) {
+            revert ZeroAddress();
+        }
 
         // Set the AnyPositionManager contract
         anyPositionManager = AnyPositionManager(_anyPositionManager);
@@ -147,7 +161,7 @@ contract SignedImporter is Ownable {
 
     /**
      * Get all trusted signers that are used to verify memecoins.
-     * 
+     *
      * @return signers_ Array of all registered signer addresses
      */
     function getAllTrustedSigners() public view returns (address[] memory signers_) {
@@ -156,12 +170,14 @@ contract SignedImporter is Ownable {
 
     /**
      * Checks if an address is a trusted signer.
-     * 
+     *
      * @param _signer The address to check
      *
      * @return valid_ `True` if the address is a trusted signer, `false` otherwise
      */
-    function isTrustedSigner(address _signer) public view returns (bool valid_) {
+    function isTrustedSigner(
+        address _signer
+    ) public view returns (bool valid_) {
         valid_ = _trustedSigners.contains(_signer);
     }
 
@@ -170,7 +186,9 @@ contract SignedImporter is Ownable {
      *
      * @param _verificationData abi encoded SignedMessage
      */
-    function _verifySignature(bytes memory _verificationData) internal returns (address memecoin_) {
+    function _verifySignature(
+        bytes memory _verificationData
+    ) internal returns (address memecoin_) {
         (SignedMessage memory signedMessage) = abi.decode(_verificationData, (SignedMessage));
 
         // Verify the deadline is not expired
@@ -184,11 +202,7 @@ contract SignedImporter is Ownable {
         }
 
         // Generate the message hash for (token, creator, deadline)
-        bytes32 messageHash = keccak256(abi.encodePacked(
-            signedMessage.token,
-            msg.sender,
-            signedMessage.deadline
-        ));
+        bytes32 messageHash = keccak256(abi.encodePacked(signedMessage.token, msg.sender, signedMessage.deadline));
 
         // Generate the message hash
         bytes32 ethSignedMessageHash = messageHash.toEthSignedMessageHash();

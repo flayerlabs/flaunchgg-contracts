@@ -139,6 +139,11 @@
         },
         {
           "name": "",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "",
           "type": "bytes",
           "internalType": "bytes"
         }

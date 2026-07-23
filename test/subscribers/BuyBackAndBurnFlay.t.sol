@@ -1,26 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
-import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 import {PoolManager} from '@uniswap/v4-core/src/PoolManager.sol';
-import {PoolIdLibrary, PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
 import {Hooks, IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
-import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
 import {StateLibrary} from '@uniswap/v4-core/src/libraries/StateLibrary.sol';
+import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
+import {ModifyLiquidityParams, SwapParams} from '@uniswap/v4-core/src/types/PoolOperation.sol';
 
-import {BuyBackAndBurnFlay} from '@flaunch/subscribers/BuyBackAndBurnFlay.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
+import {BuyBackAndBurnFlay} from '@flaunch/subscribers/BuyBackAndBurnFlay.sol';
 
 import {MemecoinMock} from 'test/mocks/MemecoinMock.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
-
+import {IBuyBackAndBurnFlay} from '@flaunch-interfaces/IBuyBackAndBurnFlay.sol';
+import {IPositionManager} from '@flaunch-interfaces/IPositionManager.sol';
 
 contract BuyBackAndBurnFlayTest is FlaunchTest {
-
     using PoolIdLibrary for PoolKey;
     using StateLibrary for PoolManager;
 
@@ -31,12 +32,16 @@ contract BuyBackAndBurnFlayTest is FlaunchTest {
 
     MemecoinMock memecoin;
 
-    constructor () {
+    constructor() {
         // Deploy our platform
         _deployPlatform();
 
         // Create our memecoin
-        address _memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(50), 30 minutes, 0, address(this), 50_00, 0, abi.encode(''), abi.encode(1_000)));
+        address _memecoin = positionManager.flaunch(
+            IPositionManager.FlaunchParams(
+                'name', 'symbol', 'https://token.gg/', 0, address(this), 50_00, 0, abi.encode(''), abi.encode(1_000)
+            )
+        );
         memecoin = MemecoinMock(_memecoin);
 
         uint tokenId = flaunch.tokenId(_memecoin);
@@ -78,13 +83,7 @@ contract BuyBackAndBurnFlayTest is FlaunchTest {
         // Make an arbritrary swap that will trigger the buy
         deal(address(flETH), address(this), 1 ether);
         flETH.approve(address(poolSwap), type(uint).max);
-        _swap(
-            IPoolManager.SwapParams({
-                zeroForOne: true,
-                amountSpecified: -1 ether,
-                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
-            })
-        );
+        _swap(SwapParams({zeroForOne: true, amountSpecified: -1 ether, sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1}));
 
         // It should initialize the position, just below the current price
         (bool initialized, int24 tickLower, int24 tickUpper, uint spent, uint burned) = buyBackAndBurnFlay.positionInfo();
@@ -93,11 +92,7 @@ contract BuyBackAndBurnFlayTest is FlaunchTest {
         assertEq(burned, 0);
 
         (uint128 liquidity,,) = poolManager.getPositionInfo({
-            poolId: poolKey.toId(),
-            owner: address(buyBackAndBurnFlay),
-            tickLower: tickLower,
-            tickUpper: tickUpper,
-            salt: ''
+            poolId: poolKey.toId(), owner: address(buyBackAndBurnFlay), tickLower: tickLower, tickUpper: tickUpper, salt: ''
         });
 
         // Position should now have sufficient liquidity
@@ -109,13 +104,7 @@ contract BuyBackAndBurnFlayTest is FlaunchTest {
         // Make an arbritrary swap that will trigger the buy
         deal(address(flETH), address(this), 10 ether);
         flETH.approve(address(poolSwap), type(uint).max);
-        _swap(
-            IPoolManager.SwapParams({
-                zeroForOne: true,
-                amountSpecified: -10 ether,
-                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
-            })
-        );
+        _swap(SwapParams({zeroForOne: true, amountSpecified: -10 ether, sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1}));
 
         // It should initialize the position, just below the current price
         (initialized,,, spent, burned) = buyBackAndBurnFlay.positionInfo();
@@ -124,16 +113,21 @@ contract BuyBackAndBurnFlayTest is FlaunchTest {
         assertEq(burned, 0);
     }
 
-    function test_Can_SetEthThreshold(uint _threshold) public {
+    function test_Can_SetEthThreshold(
+        uint _threshold
+    ) public {
         vm.expectEmit();
-        emit BuyBackAndBurnFlay.ThresholdUpdated(_threshold);
+        emit IBuyBackAndBurnFlay.ThresholdUpdated(_threshold);
 
         buyBackAndBurnFlay.setEthThreshold(_threshold);
 
         assertEq(buyBackAndBurnFlay.ethThreshold(), _threshold);
     }
 
-    function test_Cannot_SetEthThreshold_IfNotOwner(address _caller, uint _threshold) public {
+    function test_Cannot_SetEthThreshold_IfNotOwner(
+        address _caller,
+        uint _threshold
+    ) public {
         vm.assume(_caller != address(this));
 
         vm.startPrank(_caller);
@@ -146,12 +140,14 @@ contract BuyBackAndBurnFlayTest is FlaunchTest {
 
     function test_Can_SetPoolKey() public {
         vm.expectEmit();
-        emit BuyBackAndBurnFlay.PoolKeyUpdated(poolKey);
+        emit IBuyBackAndBurnFlay.PoolKeyUpdated(poolKey);
 
         buyBackAndBurnFlay.setPoolKey(poolKey);
     }
 
-    function test_Cannot_SetPoolKey_IfNotOwner(address _caller) public {
+    function test_Cannot_SetPoolKey_IfNotOwner(
+        address _caller
+    ) public {
         vm.assume(_caller != address(this));
 
         vm.startPrank(_caller);
@@ -164,11 +160,10 @@ contract BuyBackAndBurnFlayTest is FlaunchTest {
 
     // Helpers
 
-    function _swap(IPoolManager.SwapParams memory swapParams) internal returns (BalanceDelta delta) {
-        delta = poolSwap.swap(
-            poolKey,
-            swapParams
-        );
+    function _swap(
+        SwapParams memory swapParams
+    ) internal returns (BalanceDelta delta) {
+        delta = poolSwap.swap(poolKey, swapParams);
     }
 
     modifier poolHasLiquidity() {
@@ -184,7 +179,7 @@ contract BuyBackAndBurnFlayTest is FlaunchTest {
 
         poolModifyPosition.modifyLiquidity(
             poolKey,
-            IPoolManager.ModifyLiquidityParams({
+            ModifyLiquidityParams({
                 tickLower: TickMath.minUsableTick(TICK_SPACING),
                 tickUpper: TickMath.maxUsableTick(TICK_SPACING),
                 liquidityDelta: 1000 ether,
@@ -198,5 +193,4 @@ contract BuyBackAndBurnFlayTest is FlaunchTest {
 
         _;
     }
-
 }

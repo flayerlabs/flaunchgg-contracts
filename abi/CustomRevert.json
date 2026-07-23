@@ -1,0 +1,30 @@
+{
+  "abi": [
+    {
+      "type": "error",
+      "name": "WrappedError",
+      "inputs": [
+        {
+          "name": "target",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "selector",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        },
+        {
+          "name": "reason",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "details",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ]
+    }
+  ]
+}

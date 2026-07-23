@@ -3,15 +3,14 @@ pragma solidity ^0.8.26;
 
 import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
 
+import {INotifier} from '@flaunch-interfaces/INotifier.sol';
 import {Notifier} from '@flaunch/hooks/Notifier.sol';
 
 import {SubscriberMock} from '../mocks/SubscriberMock.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
 
-
 contract NotifierTest is FlaunchTest {
-
     SubscriberMock subscriber;
 
     Notifier notifier;
@@ -29,13 +28,13 @@ contract NotifierTest is FlaunchTest {
     function test_CanSubscribe() public {
         // Test successful registration of a new subscriber
         vm.expectEmit();
-        emit Notifier.Subscription(address(subscriber));
+        emit INotifier.Subscription(address(subscriber));
 
         notifier.subscribe(address(subscriber), abi.encode(true));
     }
 
     function test_CanPreventBrokenSubscribe() public {
-        vm.expectRevert(Notifier.SubscriptionReverted.selector);
+        vm.expectRevert(INotifier.SubscriptionReverted.selector);
         notifier.subscribe(address(subscriber), abi.encode(false));
     }
 
@@ -55,7 +54,6 @@ contract NotifierTest is FlaunchTest {
         emit SubscriberMock.Unubscribe();
 
         notifier.unsubscribe(address(subscriber));
-
     }
 
     function test_CanUnsubscribeUnknownAddress() public {
@@ -84,5 +82,4 @@ contract NotifierTest is FlaunchTest {
         // (use logs or specific assertions here if available)
         positionManager.emitPoolStateUpdate(POOL_ID);
     }
-
 }

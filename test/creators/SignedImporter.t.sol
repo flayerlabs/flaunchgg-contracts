@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {SignedImporter} from '@flaunch/creators/SignedImporter.sol';
 import {AnyPositionManager} from '@flaunch/AnyPositionManager.sol';
+import {SignedImporter} from '@flaunch/creators/SignedImporter.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
 
 contract SignedImporterTest is FlaunchTest {
-
     SignedImporter public importer;
 
     address public constant TEST_TOKEN = address(0x123);
     uint24 public constant TEST_CREATOR_FEE_ALLOCATION = 80_00;
     uint public constant TEST_INITIAL_MARKET_CAP = 5000e6;
-    
+
     /// The signer we will be using for tests
     address internal signer;
     uint internal signerPrivateKey;
@@ -122,16 +121,20 @@ contract SignedImporterTest is FlaunchTest {
         importer.removeTrustedSigner(signer);
     }
 
-    function test_CannotAddTrustedSignerAsNonOwner(address caller) public {
+    function test_CannotAddTrustedSignerAsNonOwner(
+        address caller
+    ) public {
         vm.assume(caller != importer.owner());
-        
+
         vm.startPrank(caller);
         vm.expectRevert(UNAUTHORIZED);
         importer.addTrustedSigner(signer);
         vm.stopPrank();
     }
 
-    function test_CannotRemoveTrustedSignerAsNonOwner(address caller) public {
+    function test_CannotRemoveTrustedSignerAsNonOwner(
+        address caller
+    ) public {
         vm.assume(caller != importer.owner());
 
         // Add signer first as owner
@@ -146,10 +149,12 @@ contract SignedImporterTest is FlaunchTest {
 
     // ============ AnyPositionManager Management Tests ============
 
-    function test_CanSetAnyPositionManager(address payable _anyPositionManager) public {
+    function test_CanSetAnyPositionManager(
+        address payable _anyPositionManager
+    ) public {
         // Ensure that the AnyPositionManager is not the zero address
         vm.assume(_anyPositionManager != address(0));
-        
+
         vm.expectEmit();
         emit SignedImporter.AnyPositionManagerSet(_anyPositionManager);
         importer.setAnyPositionManager(_anyPositionManager);
@@ -162,7 +167,9 @@ contract SignedImporterTest is FlaunchTest {
         importer.setAnyPositionManager(payable(address(0)));
     }
 
-    function test_CannotSetAnyPositionManagerAsNonOwner(address caller) public {
+    function test_CannotSetAnyPositionManagerAsNonOwner(
+        address caller
+    ) public {
         vm.assume(caller != importer.owner());
 
         vm.startPrank(caller);
@@ -180,20 +187,16 @@ contract SignedImporterTest is FlaunchTest {
         // Generate valid signature
         uint deadline = block.timestamp + 1 hours;
         bytes memory signature = _generateSignature(TEST_TOKEN, address(this), deadline, signerPrivateKey);
-        
-        SignedImporter.SignedMessage memory signedMessage = SignedImporter.SignedMessage({
-            token: TEST_TOKEN,
-            creator: address(this),
-            deadline: deadline,
-            signature: signature
-        });
+
+        SignedImporter.SignedMessage memory signedMessage =
+            SignedImporter.SignedMessage({token: TEST_TOKEN, creator: address(this), deadline: deadline, signature: signature});
 
         bytes memory verificationData = abi.encode(signedMessage);
 
         // Should succeed and emit event
         vm.expectEmit();
-        emit SignedImporter.TokenImported(TEST_TOKEN, signer);
-        
+        emit SignedImporter.TokenImported(TEST_TOKEN, address(importer));
+
         importer.initialize(TEST_CREATOR_FEE_ALLOCATION, TEST_INITIAL_MARKET_CAP, verificationData);
     }
 
@@ -206,13 +209,9 @@ contract SignedImporterTest is FlaunchTest {
         // Generate signature with expired deadline
         uint deadline = block.timestamp - 1;
         bytes memory signature = _generateSignature(TEST_TOKEN, address(this), deadline, signerPrivateKey);
-        
-        SignedImporter.SignedMessage memory signedMessage = SignedImporter.SignedMessage({
-            token: TEST_TOKEN,
-            creator: address(this),
-            deadline: deadline,
-            signature: signature
-        });
+
+        SignedImporter.SignedMessage memory signedMessage =
+            SignedImporter.SignedMessage({token: TEST_TOKEN, creator: address(this), deadline: deadline, signature: signature});
 
         bytes memory verificationData = abi.encode(signedMessage);
 
@@ -227,7 +226,7 @@ contract SignedImporterTest is FlaunchTest {
         // Generate signature for different creator
         uint deadline = block.timestamp + 1 hours;
         bytes memory signature = _generateSignature(TEST_TOKEN, address(0x999), deadline, signerPrivateKey);
-        
+
         SignedImporter.SignedMessage memory signedMessage = SignedImporter.SignedMessage({
             token: TEST_TOKEN,
             creator: address(0x999), // Different from msg.sender
@@ -247,13 +246,9 @@ contract SignedImporterTest is FlaunchTest {
         // Generate signature
         uint deadline = block.timestamp + 1 hours;
         bytes memory signature = _generateSignature(TEST_TOKEN, address(this), deadline, signerPrivateKey);
-        
-        SignedImporter.SignedMessage memory signedMessage = SignedImporter.SignedMessage({
-            token: TEST_TOKEN,
-            creator: address(this),
-            deadline: deadline,
-            signature: signature
-        });
+
+        SignedImporter.SignedMessage memory signedMessage =
+            SignedImporter.SignedMessage({token: TEST_TOKEN, creator: address(this), deadline: deadline, signature: signature});
 
         bytes memory verificationData = abi.encode(signedMessage);
 
@@ -268,13 +263,9 @@ contract SignedImporterTest is FlaunchTest {
         // Generate signature
         uint deadline = block.timestamp + 1 hours;
         bytes memory signature = _generateSignature(TEST_TOKEN, address(this), deadline, signerPrivateKey);
-        
-        SignedImporter.SignedMessage memory signedMessage = SignedImporter.SignedMessage({
-            token: TEST_TOKEN,
-            creator: address(this),
-            deadline: deadline,
-            signature: signature
-        });
+
+        SignedImporter.SignedMessage memory signedMessage =
+            SignedImporter.SignedMessage({token: TEST_TOKEN, creator: address(this), deadline: deadline, signature: signature});
 
         bytes memory verificationData = abi.encode(signedMessage);
 
@@ -293,13 +284,9 @@ contract SignedImporterTest is FlaunchTest {
         // Generate signature for zero address token
         uint deadline = block.timestamp + 1 hours;
         bytes memory signature = _generateSignature(address(0), address(this), deadline, signerPrivateKey);
-        
-        SignedImporter.SignedMessage memory signedMessage = SignedImporter.SignedMessage({
-            token: address(0),
-            creator: address(this),
-            deadline: deadline,
-            signature: signature
-        });
+
+        SignedImporter.SignedMessage memory signedMessage =
+            SignedImporter.SignedMessage({token: address(0), creator: address(this), deadline: deadline, signature: signature});
 
         bytes memory verificationData = abi.encode(signedMessage);
 
@@ -314,7 +301,7 @@ contract SignedImporterTest is FlaunchTest {
         importer.addTrustedSigner(signer);
 
         uint deadline = block.timestamp + 1 hours;
-        
+
         // Generate signature for first token
         bytes memory signature1 = _generateSignature(TEST_TOKEN, address(this), deadline, signerPrivateKey);
         address token2 = address(0x456);
@@ -324,19 +311,11 @@ contract SignedImporterTest is FlaunchTest {
         assertFalse(keccak256(signature1) == keccak256(signature2));
 
         // Both should work for their respective tokens
-        SignedImporter.SignedMessage memory signedMessage1 = SignedImporter.SignedMessage({
-            token: TEST_TOKEN,
-            creator: address(this),
-            deadline: deadline,
-            signature: signature1
-        });
+        SignedImporter.SignedMessage memory signedMessage1 =
+            SignedImporter.SignedMessage({token: TEST_TOKEN, creator: address(this), deadline: deadline, signature: signature1});
 
-        SignedImporter.SignedMessage memory signedMessage2 = SignedImporter.SignedMessage({
-            token: token2,
-            creator: address(this),
-            deadline: deadline,
-            signature: signature2
-        });
+        SignedImporter.SignedMessage memory signedMessage2 =
+            SignedImporter.SignedMessage({token: token2, creator: address(this), deadline: deadline, signature: signature2});
 
         importer.initialize(TEST_CREATOR_FEE_ALLOCATION, TEST_INITIAL_MARKET_CAP, abi.encode(signedMessage1));
         importer.initialize(TEST_CREATOR_FEE_ALLOCATION, TEST_INITIAL_MARKET_CAP, abi.encode(signedMessage2));
@@ -348,7 +327,7 @@ contract SignedImporterTest is FlaunchTest {
         importer.addTrustedSigner(signer2);
 
         uint deadline = block.timestamp + 1 hours;
-        
+
         // Generate signatures from different signers for same message data
         bytes memory signature1 = _generateSignature(TEST_TOKEN, address(this), deadline, signerPrivateKey);
         bytes memory signature2 = _generateSignature(TEST_TOKEN, address(this), deadline, signerPrivateKey2);
@@ -357,12 +336,8 @@ contract SignedImporterTest is FlaunchTest {
         assertFalse(keccak256(signature1) == keccak256(signature2));
 
         // Both should work (but only one can be used due to signature reuse prevention)
-        SignedImporter.SignedMessage memory signedMessage1 = SignedImporter.SignedMessage({
-            token: TEST_TOKEN,
-            creator: address(this),
-            deadline: deadline,
-            signature: signature1
-        });
+        SignedImporter.SignedMessage memory signedMessage1 =
+            SignedImporter.SignedMessage({token: TEST_TOKEN, creator: address(this), deadline: deadline, signature: signature1});
 
         // First one should succeed
         importer.initialize(TEST_CREATOR_FEE_ALLOCATION, TEST_INITIAL_MARKET_CAP, abi.encode(signedMessage1));
@@ -372,17 +347,22 @@ contract SignedImporterTest is FlaunchTest {
 
     /**
      * Generates a signature for the SignedImporter verification.
-     * 
+     *
      * @param _token The token address to sign for
-     * @param _creator The creator address to sign for  
+     * @param _creator The creator address to sign for
      * @param _deadline The deadline for the signature
      * @param _privateKey The private key to use for signing
      *
      * @return signature_ The encoded signature
      */
-    function _generateSignature(address _token, address _creator, uint _deadline, uint _privateKey) internal pure returns (bytes memory signature_) {
+    function _generateSignature(
+        address _token,
+        address _creator,
+        uint _deadline,
+        uint _privateKey
+    ) internal pure returns (bytes memory signature_) {
         bytes32 hash = keccak256(abi.encodePacked(_token, _creator, _deadline));
-        bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
+        bytes32 message = keccak256(abi.encodePacked('\x19Ethereum Signed Message:\n32', hash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_privateKey, message);
         signature_ = abi.encodePacked(r, s, v);
     }
@@ -390,7 +370,10 @@ contract SignedImporterTest is FlaunchTest {
     /**
      * Helper function to check if an address array contains a specific address.
      */
-    function _containsAddress(address[] memory _addresses, address _target) internal pure returns (bool) {
+    function _containsAddress(
+        address[] memory _addresses,
+        address _target
+    ) internal pure returns (bool) {
         for (uint i = 0; i < _addresses.length; i++) {
             if (_addresses[i] == _target) {
                 return true;

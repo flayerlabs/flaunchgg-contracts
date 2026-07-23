@@ -4,7 +4,7 @@
       "type": "constructor",
       "inputs": [
         {
-          "name": "_nativeToken",
+          "name": "_flETH",
           "type": "address",
           "internalType": "address"
         },
@@ -20,6 +20,10 @@
         }
       ],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "receive",
+      "stateMutability": "payable"
     },
     {
       "type": "function",
@@ -197,7 +201,20 @@
         }
       ],
       "outputs": [],
-      "stateMutability": "nonpayable"
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "flETH",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
     },
     {
       "type": "function",
@@ -300,19 +317,6 @@
     },
     {
       "type": "function",
-      "name": "nativeToken",
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "",
-          "type": "address",
-          "internalType": "address"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
       "name": "owner",
       "inputs": [],
       "outputs": [
@@ -339,6 +343,19 @@
           "name": "result",
           "type": "uint256",
           "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pairedTokenRegistry",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "contract IPairedTokenRegistry"
         }
       ],
       "stateMutability": "view"
@@ -519,6 +536,19 @@
           "name": "_disable",
           "type": "bool",
           "internalType": "bool"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setPairedTokenRegistry",
+      "inputs": [
+        {
+          "name": "_pairedTokenRegistry",
+          "type": "address",
+          "internalType": "address"
         }
       ],
       "outputs": [],
@@ -926,6 +956,11 @@
     {
       "type": "error",
       "name": "CallerIsNotCreator",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "IncorrectNativeDeposit",
       "inputs": []
     },
     {

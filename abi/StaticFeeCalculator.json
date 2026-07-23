@@ -39,7 +39,7 @@
         {
           "name": "",
           "type": "tuple",
-          "internalType": "struct IPoolManager.SwapParams",
+          "internalType": "struct SwapParams",
           "components": [
             {
               "name": "zeroForOne",
@@ -78,12 +78,12 @@
       "name": "setFlaunchParams",
       "inputs": [
         {
-          "name": "_poolId",
+          "name": "",
           "type": "bytes32",
           "internalType": "PoolId"
         },
         {
-          "name": "_params",
+          "name": "",
           "type": "bytes",
           "internalType": "bytes"
         }
@@ -96,12 +96,12 @@
       "name": "trackSwap",
       "inputs": [
         {
-          "name": "_sender",
+          "name": "",
           "type": "address",
           "internalType": "address"
         },
         {
-          "name": "_poolKey",
+          "name": "",
           "type": "tuple",
           "internalType": "struct PoolKey",
           "components": [
@@ -133,9 +133,9 @@
           ]
         },
         {
-          "name": "_params",
+          "name": "",
           "type": "tuple",
-          "internalType": "struct IPoolManager.SwapParams",
+          "internalType": "struct SwapParams",
           "components": [
             {
               "name": "zeroForOne",
@@ -155,18 +155,18 @@
           ]
         },
         {
-          "name": "_delta",
+          "name": "",
           "type": "int256",
           "internalType": "BalanceDelta"
         },
         {
-          "name": "_hookData",
+          "name": "",
           "type": "bytes",
           "internalType": "bytes"
         }
       ],
       "outputs": [],
-      "stateMutability": "nonpayable"
+      "stateMutability": "pure"
     }
   ]
 }

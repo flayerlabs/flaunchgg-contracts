@@ -4,7 +4,7 @@
       "type": "constructor",
       "inputs": [
         {
-          "name": "_nativeToken",
+          "name": "_flETH",
           "type": "address",
           "internalType": "address"
         },
@@ -125,6 +125,19 @@
     },
     {
       "type": "function",
+      "name": "flETH",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "getRoleAdmin",
       "inputs": [
         {
@@ -186,19 +199,6 @@
     },
     {
       "type": "function",
-      "name": "nativeToken",
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "",
-          "type": "address",
-          "internalType": "address"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
       "name": "owner",
       "inputs": [],
       "outputs": [
@@ -225,6 +225,19 @@
           "name": "result",
           "type": "uint256",
           "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pairedTokenRegistry",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "contract IPairedTokenRegistry"
         }
       ],
       "stateMutability": "view"
@@ -285,6 +298,19 @@
         },
         {
           "name": "account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setPairedTokenRegistry",
+      "inputs": [
+        {
+          "name": "_pairedTokenRegistry",
           "type": "address",
           "internalType": "address"
         }

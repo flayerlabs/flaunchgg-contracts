@@ -1,0 +1,32 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "approve",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "spender",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "expiration",
+          "type": "uint48",
+          "internalType": "uint48"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    }
+  ]
+}

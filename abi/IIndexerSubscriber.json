@@ -1,0 +1,251 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "addIndex",
+      "inputs": [
+        {
+          "name": "_params",
+          "type": "tuple[]",
+          "internalType": "struct IIndexerSubscriber.AddIndexParams[]",
+          "components": [
+            {
+              "name": "flaunch",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "tokenIds",
+              "type": "uint256[]",
+              "internalType": "uint256[]"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "addVerifiedFlaunch",
+      "inputs": [
+        {
+          "name": "_flaunch",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "isVerifiedFlaunch",
+      "inputs": [
+        {
+          "name": "_flaunch",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "verified_",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "notify",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "internalType": "PoolId"
+        },
+        {
+          "name": "_key",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        },
+        {
+          "name": "_data",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "poolIndex",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "internalType": "PoolId"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "flaunch_",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "memecoin_",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "memecoinTreasury_",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "tokenId_",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "removeVerifiedFlaunch",
+      "inputs": [
+        {
+          "name": "_flaunch",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setNotifierFlaunch",
+      "inputs": [
+        {
+          "name": "_notifier",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_flaunch",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "subscribe",
+      "inputs": [
+        {
+          "name": "_data",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "FlaunchVerified",
+      "inputs": [
+        {
+          "name": "_flaunch",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "_verified",
+          "type": "bool",
+          "indexed": false,
+          "internalType": "bool"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "PoolIndexed",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "PoolId"
+        },
+        {
+          "name": "_flaunch",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "_memecoin",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "_memecoinTreasury",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "_tokenId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "FlaunchNotVerified",
+      "inputs": [
+        {
+          "name": "_flaunch",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidTokenId",
+      "inputs": [
+        {
+          "name": "_flaunch",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_tokenId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ]
+}

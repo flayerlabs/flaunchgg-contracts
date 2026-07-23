@@ -1,0 +1,94 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "flaunchFeeExemption",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "contract FlaunchFeeExemption"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "getFlaunchingFee",
+      "inputs": [
+        {
+          "name": "_sender",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_initialPriceParams",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getMarketCap",
+      "inputs": [
+        {
+          "name": "_initialPriceParams",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getSqrtPriceX96",
+      "inputs": [
+        {
+          "name": "_sender",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_flipped",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "_pairedToken",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_initialPriceParams",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ],
+      "stateMutability": "view"
+    }
+  ]
+}

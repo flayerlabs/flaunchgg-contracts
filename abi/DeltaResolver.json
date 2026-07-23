@@ -1,0 +1,49 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "poolManager",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "contract IPoolManager"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "error",
+      "name": "DeltaNotNegative",
+      "inputs": [
+        {
+          "name": "currency",
+          "type": "address",
+          "internalType": "Currency"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "DeltaNotPositive",
+      "inputs": [
+        {
+          "name": "currency",
+          "type": "address",
+          "internalType": "Currency"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InsufficientBalance",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NotPoolManager",
+      "inputs": []
+    }
+  ]
+}

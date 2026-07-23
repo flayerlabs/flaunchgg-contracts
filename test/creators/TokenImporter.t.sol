@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {TokenImporter} from '@flaunch/creators/TokenImporter.sol';
 import {ImportVerifierMock} from '../mocks/ImportVerifierMock.sol';
+import {TokenImporter} from '@flaunch/creators/TokenImporter.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
 
-
 contract TokenImporterTest is FlaunchTest {
-
     TokenImporter public importer;
 
     ImportVerifierMock public mockVerifier;
@@ -125,7 +123,9 @@ contract TokenImporterTest is FlaunchTest {
         importer.initialize(TEST_TOKEN, TEST_CREATOR_FEE_ALLOCATION, 5000e6, address(mockVerifier));
     }
 
-    function test_CanSetAnyPositionManager(address payable _anyPositionManager) public {
+    function test_CanSetAnyPositionManager(
+        address payable _anyPositionManager
+    ) public {
         // Ensure that the AnyPositionManager is not the zero address
         vm.assume(_anyPositionManager != address(0));
 
@@ -136,7 +136,10 @@ contract TokenImporterTest is FlaunchTest {
         assertEq(address(importer.anyPositionManager()), _anyPositionManager);
     }
 
-    function test_CannotSetAnyPositionManagerWithNonOwner(address _caller, address payable _anyPositionManager) public {
+    function test_CannotSetAnyPositionManagerWithNonOwner(
+        address _caller,
+        address payable _anyPositionManager
+    ) public {
         // Ensure that the AnyPositionManager is not the zero address
         vm.assume(_anyPositionManager != address(0));
 
@@ -158,7 +161,9 @@ contract TokenImporterTest is FlaunchTest {
         importer.setAnyPositionManager(payable(address(0)));
     }
 
-    function _isVerifier(address _verifier) internal view returns (bool isVerifier_) {
+    function _isVerifier(
+        address _verifier
+    ) internal view returns (bool isVerifier_) {
         address[] memory verifiers = importer.getAllVerifiers();
         for (uint i = 0; i < verifiers.length; i++) {
             if (verifiers[i] == _verifier) {
@@ -166,5 +171,4 @@ contract TokenImporterTest is FlaunchTest {
             }
         }
     }
-
 }

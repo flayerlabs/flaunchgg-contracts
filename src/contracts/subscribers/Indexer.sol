@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import {Ownable} from '@solady/auth/Ownable.sol';
+import {EnumerableSetLib} from '@solady/utils/EnumerableSetLib.sol';
 
 import {IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
 import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
@@ -9,56 +10,32 @@ import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
 import {Flaunch} from '@flaunch/Flaunch.sol';
 
+import {IIndexerSubscriber} from '@flaunch-interfaces/IIndexerSubscriber.sol';
 
 /**
  * Creates an evolving list of pools on Flaunch and maps its corresponding token
  * information for onchain lookups.
  */
-contract IndexerSubscriber is Ownable {
-
+contract IndexerSubscriber is IIndexerSubscriber, Ownable {
+    using EnumerableSetLib for EnumerableSetLib.AddressSet;
     using PoolIdLibrary for PoolKey;
 
-    error InvalidTokenId(address _flaunch, uint _tokenId);
-
-    /**
-     * Contains index information for a token.
-     *
-     * @member flaunch The {Flaunch} contract that launched the token
-     * @member memecoin The ERC20 memecoin address
-     * @member memecoinTreasury The contract address for the memecoin treasury
-     * @member tokenId The ERC721 {Flaunch} token created with the memecoin
-     */
-    struct Index {
-        address flaunch;
-        address memecoin;
-        address memecoinTreasury;
-        uint tokenId;
-    }
-
-    /**
-     * Contains information required for created a legacy index.
-     *
-     * @member flaunch The {Flaunch} contract that launched the token
-     * @member tokenId The ERC721 {Flaunch} token IDs created with the memecoin
-     */
-    struct AddIndexParams {
-        address flaunch;
-        uint[] tokenIds;
-    }
+    /// Set of verified Flaunch contracts
+    EnumerableSetLib.AddressSet internal _verifiedFlaunches;
 
     /// Maps a PoolId to the token index information
-    mapping (PoolId _poolId => Index _index) internal _poolIndex;
+    mapping(PoolId _poolId => Index _index) internal _poolIndex;
 
     /// Maps a PoolId to a Flaunch contract
-    mapping (PoolId _poolId => Flaunch _flaunch) internal _poolFlaunch;
+    mapping(PoolId _poolId => Flaunch _flaunch) internal _poolFlaunch;
 
     /// Maps each notifier to the flaunch contract that it will represent
-    mapping (address _notifier => address _flaunch) internal _notifierFlaunch;
+    mapping(address _notifier => address _flaunch) internal _notifierFlaunch;
 
     /**
      * Registers the owner of the contract.
      */
-    constructor () {
+    constructor() {
         _initializeOwner(msg.sender);
     }
 
@@ -69,7 +46,9 @@ contract IndexerSubscriber is Ownable {
      *
      * @dev This must return `true` to be subscribed.
      */
-    function subscribe(bytes memory /* _data */) public pure returns (bool) {
+    function subscribe(
+        bytes memory /* _data */
+    ) public pure returns (bool) {
         return true;
     }
 
@@ -82,7 +61,11 @@ contract IndexerSubscriber is Ownable {
      * @param _key The notification key
      * @param _data Contains the tokenId, as well as unused params
      */
-    function notify(PoolId _poolId, bytes4 _key, bytes calldata _data) public {
+    function notify(
+        PoolId _poolId,
+        bytes4 _key,
+        bytes calldata _data
+    ) public {
         // We only want to deal with the `afterInitialize` key
         if (_key != IHooks.afterInitialize.selector) {
             return;
@@ -124,7 +107,9 @@ contract IndexerSubscriber is Ownable {
      * @return memecoinTreasury_ The memecoin treasury address
      * @return tokenId_ The tokenId created with the pool (0 if burned)
      */
-    function poolIndex(PoolId _poolId) public view returns (address flaunch_, address memecoin_, address memecoinTreasury_, uint tokenId_) {
+    function poolIndex(
+        PoolId _poolId
+    ) public view returns (address flaunch_, address memecoin_, address memecoinTreasury_, uint tokenId_) {
         // Get the index information for the given PoolId
         Index memory poolIndex_ = _poolIndex[_poolId];
 
@@ -132,9 +117,12 @@ contract IndexerSubscriber is Ownable {
         // the ownership of the token has been burned. If it has been burned and future contract calls
         // depend on this value, then they could receive a revert.
         if (poolIndex_.tokenId != 0) {
-            try _poolFlaunch[_poolId].ownerOf(poolIndex_.tokenId) returns (address owner) {
-                // ..
-            } catch {
+            try _poolFlaunch[_poolId].ownerOf(poolIndex_.tokenId) returns (
+                address owner
+            ) {
+            // ..
+            }
+            catch {
                 poolIndex_.tokenId = 0;
             }
         }
@@ -149,7 +137,9 @@ contract IndexerSubscriber is Ownable {
      *
      * @param _params Information to add legacy indexes
      */
-    function addIndex(AddIndexParams[] calldata _params) public {
+    function addIndex(
+        AddIndexParams[] calldata _params
+    ) public {
         // Declare our global variables
         AddIndexParams memory params;
         Flaunch flaunch;
@@ -161,6 +151,11 @@ contract IndexerSubscriber is Ownable {
         for (uint i; i < paramsLength; ++i) {
             params = _params[i];
             flaunch = Flaunch(params.flaunch);
+
+            // Verify that the Flaunch contract is verified
+            if (!_verifiedFlaunches.contains(params.flaunch)) {
+                revert FlaunchNotVerified(params.flaunch);
+            }
 
             // Iterate over our tokenIds
             uint tokenIdsLength = params.tokenIds.length;
@@ -185,14 +180,13 @@ contract IndexerSubscriber is Ownable {
 
                 // Store our validated index data
                 _poolIndex[poolId] = Index({
-                    flaunch: address(flaunch),
-                    memecoin: memecoin,
-                    memecoinTreasury: flaunch.memecoinTreasury(tokenId),
-                    tokenId: tokenId
+                    flaunch: address(flaunch), memecoin: memecoin, memecoinTreasury: flaunch.memecoinTreasury(tokenId), tokenId: tokenId
                 });
 
                 // Store our flaunch contract relative to the PoolId
                 _poolFlaunch[poolId] = flaunch;
+
+                emit PoolIndexed(poolId, address(flaunch), memecoin, flaunch.memecoinTreasury(tokenId), tokenId);
             }
         }
     }
@@ -203,8 +197,47 @@ contract IndexerSubscriber is Ownable {
      * @param _notifier The {Notifier} contract address
      * @param _flaunch The {Flaunch} contract of the Notifier
      */
-    function setNotifierFlaunch(address _notifier, address _flaunch) public onlyOwner {
+    function setNotifierFlaunch(
+        address _notifier,
+        address _flaunch
+    ) public onlyOwner {
         _notifierFlaunch[_notifier] = _flaunch;
     }
 
+    /**
+     * Allows the owner to update the list of verified Flaunch contracts that can be assigned
+     * during the `addIndex` function.
+     *
+     * @param _flaunch The {Flaunch} contract to add to the list
+     */
+    function addVerifiedFlaunch(
+        address _flaunch
+    ) public onlyOwner {
+        _verifiedFlaunches.add(_flaunch);
+        emit FlaunchVerified(_flaunch, true);
+    }
+
+    /**
+     * Allows the owner to remove a {Flaunch} contract from the list of verified Flaunch contracts.
+     *
+     * @param _flaunch The {Flaunch} contract to remove from the list
+     */
+    function removeVerifiedFlaunch(
+        address _flaunch
+    ) public onlyOwner {
+        _verifiedFlaunches.remove(_flaunch);
+        emit FlaunchVerified(_flaunch, false);
+    }
+
+    /**
+     * Checks if a {Flaunch} contract is verified and can be used in addIndex.
+     *
+     * @param _flaunch The {Flaunch} contract address to check
+     * @return verified_ True if the Flaunch contract is verified, false otherwise
+     */
+    function isVerifiedFlaunch(
+        address _flaunch
+    ) public view returns (bool verified_) {
+        return _verifiedFlaunches.contains(_flaunch);
+    }
 }

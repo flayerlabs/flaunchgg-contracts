@@ -5,18 +5,16 @@ import {Ownable} from '@solady/auth/Ownable.sol';
 
 import {FullMath} from '@uniswap/v4-core/src/libraries/FullMath.sol';
 
-import {FlaunchFeeExemption} from '@flaunch/price/FlaunchFeeExemption.sol';
 import {TokenSupply} from '@flaunch/libraries/TokenSupply.sol';
+import {FlaunchFeeExemption} from '@flaunch/price/FlaunchFeeExemption.sol';
 
 import {IInitialPrice} from '@flaunch-interfaces/IInitialPrice.sol';
-
 
 /**
  * This contract defines an initial flaunch price by calling on a value already set by the
  * Owner. This is a very simple implementation that sets an ETH : Token price.
  */
 contract InitialPrice is IInitialPrice, Ownable {
-
     event FlaunchFeeThresholdUpdated(uint _flaunchFeeThreshold);
     event InitialSqrtPriceX96Updated(uint160 _unflipped, uint160 _flipped);
 
@@ -55,7 +53,11 @@ contract InitialPrice is IInitialPrice, Ownable {
      * @param _protocolOwner The address of the owner
      * @param _flaunchFeeExemption The {FlaunchFeeExemption} contract address
      */
-    constructor (uint _flaunchFee, address _protocolOwner, address _flaunchFeeExemption) {
+    constructor(
+        uint _flaunchFee,
+        address _protocolOwner,
+        address _flaunchFeeExemption
+    ) {
         // Set our flaunch fee
         flaunchFee = _flaunchFee;
 
@@ -73,7 +75,10 @@ contract InitialPrice is IInitialPrice, Ownable {
      *
      * @return uint The fee taken from the user for Flaunching a token
      */
-    function getFlaunchingFee(address _sender, bytes calldata _initialPriceParams) public view returns (uint) {
+    function getFlaunchingFee(
+        address _sender,
+        bytes calldata _initialPriceParams
+    ) public view returns (uint) {
         // Decode our initial price parameters to give the USDC value requested
         (InitialPriceParams memory params) = abi.decode(_initialPriceParams, (InitialPriceParams));
 
@@ -95,7 +100,9 @@ contract InitialPrice is IInitialPrice, Ownable {
      *
      * @return uint The ETH value of the market cap
      */
-    function getMarketCap(bytes calldata _initialPriceParams) public view returns (uint) {
+    function getMarketCap(
+        bytes calldata _initialPriceParams
+    ) public view returns (uint) {
         uint160 sqrtPriceX96 = getSqrtPriceX96(msg.sender, false, _initialPriceParams);
 
         if (sqrtPriceX96 <= type(uint128).max) {
@@ -115,7 +122,12 @@ contract InitialPrice is IInitialPrice, Ownable {
      *
      * @return uint160 The `sqrtPriceX96` value
      */
-    function getSqrtPriceX96(address /* _sender */, bool _flipped, bytes calldata /* _initialPriceParams */) public view returns (uint160) {
+    function getSqrtPriceX96(
+        address,
+        /* _sender */
+        bool _flipped,
+        bytes calldata /* _initialPriceParams */
+    ) public view returns (uint160) {
         return _flipped ? _initialSqrtPriceX96.flipped : _initialSqrtPriceX96.unflipped;
     }
 
@@ -126,7 +138,9 @@ contract InitialPrice is IInitialPrice, Ownable {
      *
      * @param _sqrtPriceX96 The new `_initialSqrtPriceX96` value
      */
-    function setSqrtPriceX96(InitialSqrtPriceX96 memory _sqrtPriceX96) public onlyOwner {
+    function setSqrtPriceX96(
+        InitialSqrtPriceX96 memory _sqrtPriceX96
+    ) public onlyOwner {
         _initialSqrtPriceX96 = _sqrtPriceX96;
         emit InitialSqrtPriceX96Updated(_sqrtPriceX96.unflipped, _sqrtPriceX96.flipped);
     }
@@ -136,7 +150,9 @@ contract InitialPrice is IInitialPrice, Ownable {
      *
      * @param _flaunchFeeThreshold The new flaunch fee threshold
      */
-    function setFlaunchFeeThreshold(uint _flaunchFeeThreshold) public onlyOwner {
+    function setFlaunchFeeThreshold(
+        uint _flaunchFeeThreshold
+    ) public onlyOwner {
         flaunchFeeThreshold = _flaunchFeeThreshold;
         emit FlaunchFeeThresholdUpdated(_flaunchFeeThreshold);
     }
@@ -149,5 +165,4 @@ contract InitialPrice is IInitialPrice, Ownable {
     function _guardInitializeOwner() internal pure virtual override returns (bool) {
         return true;
     }
-
 }

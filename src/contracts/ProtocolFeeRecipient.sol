@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {EnumerableSetLib} from '@solady/utils/EnumerableSetLib.sol';
 import {Ownable} from '@solady/auth/Ownable.sol';
+import {EnumerableSetLib} from '@solady/utils/EnumerableSetLib.sol';
 
 import {IFeeEscrow} from '@flaunch-interfaces/IFeeEscrow.sol';
-
 
 /**
  * Acts as a middleware for FeeEscrow fee recipients to allow additional control
  * over when fees are claimed and how they are managed.
  */
 contract ProtocolFeeRecipient is Ownable {
-
     using EnumerableSetLib for EnumerableSetLib.AddressSet;
 
     error EthTransferFailed();
@@ -26,7 +24,7 @@ contract ProtocolFeeRecipient is Ownable {
     /**
      * Sets the sender as the owner of the contract.
      */
-    constructor () {
+    constructor() {
         _initializeOwner(msg.sender);
     }
 
@@ -52,7 +50,9 @@ contract ProtocolFeeRecipient is Ownable {
      *
      * @return amount_ The amount of ETH received in the claim
      */
-    function claim(address payable _recipient) public onlyOwner returns (uint amount_) {
+    function claim(
+        address payable _recipient
+    ) public onlyOwner returns (uint amount_) {
         // Withdraw fees from FeeEscrow
         for (uint i; i < _feeEscrows.length(); ++i) {
             IFeeEscrow(payable(_feeEscrows.at(i))).withdrawFees(address(this), true);
@@ -63,7 +63,9 @@ contract ProtocolFeeRecipient is Ownable {
 
         // Transfer all ETH to the recipient
         (bool _sent,) = _recipient.call{value: amount_}('');
-        if (!_sent) revert EthTransferFailed();
+        if (!_sent) {
+            revert EthTransferFailed();
+        }
     }
 
     /**
@@ -72,7 +74,10 @@ contract ProtocolFeeRecipient is Ownable {
      * @param _feeEscrow The FeeEscrow to be manipulated in the EnumerableSet
      * @param _enable If the FeeEscrow is being enabled (true) or disabled (false)
      */
-    function setFeeEscrow(address _feeEscrow, bool _enable) public onlyOwner {
+    function setFeeEscrow(
+        address _feeEscrow,
+        bool _enable
+    ) public onlyOwner {
         if (_enable && !_feeEscrows.contains(_feeEscrow)) {
             _feeEscrows.add(_feeEscrow);
             emit FeeEscrowUpdated(_feeEscrow, true);
@@ -88,6 +93,5 @@ contract ProtocolFeeRecipient is Ownable {
     /**
      * Allows the contract to receive ETH from fees.
      */
-    receive () external payable {}
-
+    receive() external payable {}
 }

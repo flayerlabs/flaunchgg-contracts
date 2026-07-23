@@ -1,0 +1,32 @@
+{
+  "lib/forge-std": {
+    "rev": "3353993420c6e488a2914ce02d88174e80ad80f8"
+  },
+  "lib/openzeppelin-contracts": {
+    "tag": {
+      "name": "v5.4.0",
+      "rev": "c64a1edb67b6e3f4a15cca8909c9482ad33a02b0"
+    }
+  },
+  "lib/openzeppelin-contracts-upgradeable": {
+    "branch": {
+      "name": "release-v4.9",
+      "rev": "2d081f24cac1a867f6f73d512f2022e1fa987854"
+    }
+  },
+  "lib/optimism": {
+    "rev": "0bc5fe8d16155dc68bcdf1fa5733abc58689a618"
+  },
+  "lib/solady": {
+    "rev": "1e9ad837d21816c57d547b6116bb83611b396914"
+  },
+  "lib/v3-core": {
+    "rev": "d8b1c635c275d2a9450bd6a78f3fa2484fef73eb"
+  },
+  "lib/v4-hooks-public": {
+    "rev": "d4f01f4b9a7eacee56385ac41acc59033c81354f"
+  },
+  "lib/vulcan": {
+    "rev": "93d1e0a05c7e4317f6111c2b0547498f8c159345"
+  }
+}

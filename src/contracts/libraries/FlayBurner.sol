@@ -5,13 +5,11 @@ import {Ownable} from '@solady/auth/Ownable.sol';
 
 import {IFLETH} from '@flaunch-interfaces/IFLETH.sol';
 
-
 /**
  * Allows a burn to be specified and routes FLETH through this single contract from
  * a range of managers and other sources.
  */
 contract FlayBurner is Ownable {
-
     event BurnerUpdated(address payable _burner);
 
     /// The address that will receive FLETH to buy and burn $FLAY
@@ -25,7 +23,9 @@ contract FlayBurner is Ownable {
      *
      * @param _fleth The {IFLETH} contract address
      */
-    constructor (address _fleth) {
+    constructor(
+        address _fleth
+    ) {
         fleth = IFLETH(_fleth);
         _initializeOwner(msg.sender);
     }
@@ -36,7 +36,9 @@ contract FlayBurner is Ownable {
      *
      * @param _burner The new burner address
      */
-    function setBurner(address payable _burner) public onlyOwner {
+    function setBurner(
+        address payable _burner
+    ) public onlyOwner {
         burner = _burner;
         emit BurnerUpdated(_burner);
     }
@@ -49,7 +51,9 @@ contract FlayBurner is Ownable {
      *
      * @param _amount The amount of FLETH to transfer
      */
-    function buyAndBurn(uint _amount) public {
+    function buyAndBurn(
+        uint _amount
+    ) public {
         // If no burner is set, then hold the flETH internally
         if (burner == address(0)) {
             fleth.transferFrom(msg.sender, address(this), _amount);
@@ -74,8 +78,7 @@ contract FlayBurner is Ownable {
     /**
      * Automatically convert any ETH sent to the contract into FLETH.
      */
-    receive () external payable {
+    receive() external payable {
         fleth.deposit{value: msg.value}(0);
     }
-
 }

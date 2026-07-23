@@ -3,12 +3,13 @@ pragma solidity ^0.8.26;
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
-import {toBeforeSwapDelta} from '@uniswap/v4-core/src/types/BeforeSwapDelta.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {PoolIdLibrary, PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
 import {Hooks, IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
 import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {toBeforeSwapDelta} from '@uniswap/v4-core/src/types/BeforeSwapDelta.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
+import {ModifyLiquidityParams, SwapParams} from '@uniswap/v4-core/src/types/PoolOperation.sol';
 
 import {AnyFlaunch} from '@flaunch/AnyFlaunch.sol';
 import {AnyPositionManager} from '@flaunch/AnyPositionManager.sol';
@@ -18,15 +19,18 @@ import {InitialPrice} from '@flaunch/price/InitialPrice.sol';
 import {ERC20Mock} from 'test/tokens/ERC20Mock.sol';
 
 import {FlaunchTest} from './FlaunchTest.sol';
-
+import {IAnyFlaunch} from '@flaunch-interfaces/IAnyFlaunch.sol';
+import {IAnyPositionManager} from '@flaunch-interfaces/IAnyPositionManager.sol';
+import {IBidWall} from '@flaunch-interfaces/IBidWall.sol';
+import {IFlaunch} from '@flaunch-interfaces/IFlaunch.sol';
+import {IPositionManager} from '@flaunch-interfaces/IPositionManager.sol';
 
 contract AnyPositionManagerTest is FlaunchTest {
-
     using PoolIdLibrary for PoolKey;
 
     address internal memecoin;
 
-    constructor () {
+    constructor() {
         // Deploy our platform
         _deployPlatform();
 
@@ -35,7 +39,9 @@ contract AnyPositionManagerTest is FlaunchTest {
         ERC20Mock(memecoin).mint(address(this), 100_000 ether);
     }
 
-    function test_approveMemecoin_RevertsIfNotOwner(address _caller) public {
+    function test_approveMemecoin_RevertsIfNotOwner(
+        address _caller
+    ) public {
         vm.assume(_caller != anyPositionManager.owner());
 
         vm.expectRevert(UNAUTHORIZED);
@@ -43,15 +49,18 @@ contract AnyPositionManagerTest is FlaunchTest {
         anyPositionManager.approveCreator(address(this), true);
     }
 
-    function test_approveCreator_SuccessIfOwner(address _creator, bool _isApproved) public {
+    function test_approveCreator_SuccessIfOwner(
+        address _creator,
+        bool _isApproved
+    ) public {
         anyPositionManager.approveCreator(_creator, _isApproved);
         assertEq(anyPositionManager.approvedMemecoinCreator(_creator), _isApproved);
     }
 
     function test_CannotFlaunchIfNotApproved() public {
-        vm.expectRevert(AnyPositionManager.CallerIsNotApprovedCreator.selector);
+        vm.expectRevert(IAnyPositionManager.CallerIsNotApprovedCreator.selector);
         anyPositionManager.flaunch(
-            AnyPositionManager.FlaunchParams({
+            IAnyPositionManager.FlaunchParams({
                 memecoin: memecoin,
                 creator: address(this),
                 creatorFeeAllocation: 50_00,
@@ -61,12 +70,15 @@ contract AnyPositionManagerTest is FlaunchTest {
         );
     }
 
-    function test_CanFlaunch(uint24 _creatorFeeAllocation, bool _flipped) public flipTokens(_flipped) {
+    function test_CanFlaunch(
+        uint24 _creatorFeeAllocation,
+        bool _flipped
+    ) public flipTokens(_flipped) {
         vm.assume(_creatorFeeAllocation <= 100_00);
         _approveCreator(address(this));
 
         anyPositionManager.flaunch(
-            AnyPositionManager.FlaunchParams({
+            IAnyPositionManager.FlaunchParams({
                 memecoin: memecoin,
                 creator: address(this),
                 creatorFeeAllocation: _creatorFeeAllocation,
@@ -89,13 +101,16 @@ contract AnyPositionManagerTest is FlaunchTest {
         assertEq(anyFlaunch.tokenURI(tokenId), 'https://api.flaunch.gg/token/1');
     }
 
-    function test_CanMassFlaunch(uint8 flaunchCount, bool _flipped) public flipTokens(_flipped) {
+    function test_CanMassFlaunch(
+        uint8 flaunchCount,
+        bool _flipped
+    ) public flipTokens(_flipped) {
         for (uint i; i < flaunchCount; ++i) {
             memecoin = address(new ERC20Mock(address(this)));
             _approveCreator(address(this));
 
             anyPositionManager.flaunch(
-                AnyPositionManager.FlaunchParams({
+                IAnyPositionManager.FlaunchParams({
                     memecoin: memecoin,
                     creator: address(this),
                     creatorFeeAllocation: 50_00,
@@ -124,18 +139,14 @@ contract AnyPositionManagerTest is FlaunchTest {
         anyPositionManager.setInitialPrice(address(initialPrice));
 
         // Ensure the contract state was updated correctly
-        assertEq(
-            address(anyPositionManager.getInitialPrice()),
-            address(initialPrice),
-            'Initial price contract should be set correctly'
-        );
+        assertEq(address(anyPositionManager.initialPrice()), address(initialPrice), 'Initial price contract should be set correctly');
     }
 
     // Test that InitialPriceUpdated event is emitted when the initial price is set
     function test_CanGetInitialPriceUpdatedEvent() public {
         // Expect the InitialPriceUpdated event
         vm.expectEmit();
-        emit AnyPositionManager.InitialPriceUpdated(address(initialPrice));
+        emit IAnyPositionManager.InitialPriceUpdated(address(initialPrice));
 
         // Call as owner to set valid InitialPrice and emit event
         anyPositionManager.setInitialPrice(address(initialPrice));
@@ -166,12 +177,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         // This is ETH -> TOKEN on an unflipped pool
         // ETH is specified, TOKEN is unspecified
         (amount0, amount1) = anyPositionManager.captureDelta(
-            poolKey,
-            IPoolManager.SwapParams({
-                zeroForOne: true,
-                amountSpecified: -1 ether,
-                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
-            }),
+            SwapParams({zeroForOne: true, amountSpecified: -1 ether, sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1}),
             toBeforeSwapDelta(-1 ether, 1 ether)
         );
 
@@ -179,13 +185,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         assertEq(amount1, -1 ether);
 
         (amount0, amount1) = anyPositionManager.captureDeltaSwapFee(
-            poolKey,
-            IPoolManager.SwapParams({
-                zeroForOne: true,
-                amountSpecified: -1 ether,
-                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
-            }),
-            1 ether
+            SwapParams({zeroForOne: true, amountSpecified: -1 ether, sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1}), 1 ether
         );
 
         assertEq(amount0, 0);
@@ -194,12 +194,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         // This is ETH -> TOKEN on an unflipped pool
         // TOKEN is specified, ETH is unspecified
         (amount0, amount1) = anyPositionManager.captureDelta(
-            poolKey,
-            IPoolManager.SwapParams({
-                zeroForOne: true,
-                amountSpecified: 1 ether,
-                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
-            }),
+            SwapParams({zeroForOne: true, amountSpecified: 1 ether, sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1}),
             toBeforeSwapDelta(1 ether, -1 ether)
         );
 
@@ -207,13 +202,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         assertEq(amount1, -1 ether);
 
         (amount0, amount1) = anyPositionManager.captureDeltaSwapFee(
-            poolKey,
-            IPoolManager.SwapParams({
-                zeroForOne: true,
-                amountSpecified: 1 ether,
-                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
-            }),
-            1 ether
+            SwapParams({zeroForOne: true, amountSpecified: 1 ether, sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1}), 1 ether
         );
 
         assertEq(amount0, -1 ether);
@@ -222,12 +211,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         // This is TOKEN -> ETH on an unflipped pool
         // TOKEN is specified, ETH is unspecified
         (amount0, amount1) = anyPositionManager.captureDelta(
-            poolKey,
-            IPoolManager.SwapParams({
-                zeroForOne: false,
-                amountSpecified: -1 ether,
-                sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
-            }),
+            SwapParams({zeroForOne: false, amountSpecified: -1 ether, sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1}),
             toBeforeSwapDelta(1 ether, -1 ether)
         );
 
@@ -235,13 +219,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         assertEq(amount1, -1 ether);
 
         (amount0, amount1) = anyPositionManager.captureDeltaSwapFee(
-            poolKey,
-            IPoolManager.SwapParams({
-                zeroForOne: false,
-                amountSpecified: -1 ether,
-                sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
-            }),
-            1 ether
+            SwapParams({zeroForOne: false, amountSpecified: -1 ether, sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1}), 1 ether
         );
 
         assertEq(amount0, -1 ether);
@@ -250,12 +228,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         // This is TOKEN -> ETH on an unflipped pool
         // ETH is specified, TOKEN is unspecified
         (amount0, amount1) = anyPositionManager.captureDelta(
-            poolKey,
-            IPoolManager.SwapParams({
-                zeroForOne: false,
-                amountSpecified: 1 ether,
-                sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
-            }),
+            SwapParams({zeroForOne: false, amountSpecified: 1 ether, sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1}),
             toBeforeSwapDelta(-1 ether, 1 ether)
         );
 
@@ -263,13 +236,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         assertEq(amount1, -1 ether);
 
         (amount0, amount1) = anyPositionManager.captureDeltaSwapFee(
-            poolKey,
-            IPoolManager.SwapParams({
-                zeroForOne: false,
-                amountSpecified: 1 ether,
-                sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
-            }),
-            1 ether
+            SwapParams({zeroForOne: false, amountSpecified: 1 ether, sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1}), 1 ether
         );
 
         assertEq(amount0, 0);
@@ -278,12 +245,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         // This is ETH -> TOKEN on an flipped pool
         // ETH is specified, TOKEN is unspecified
         (amount0, amount1) = anyPositionManager.captureDelta(
-            flippedPoolKey,
-            IPoolManager.SwapParams({
-                zeroForOne: false,
-                amountSpecified: -1 ether,
-                sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
-            }),
+            SwapParams({zeroForOne: false, amountSpecified: -1 ether, sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1}),
             toBeforeSwapDelta(-1 ether, 1 ether)
         );
 
@@ -291,13 +253,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         assertEq(amount1, 1 ether);
 
         (amount0, amount1) = anyPositionManager.captureDeltaSwapFee(
-            flippedPoolKey,
-            IPoolManager.SwapParams({
-                zeroForOne: false,
-                amountSpecified: -1 ether,
-                sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
-            }),
-            1 ether
+            SwapParams({zeroForOne: false, amountSpecified: -1 ether, sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1}), 1 ether
         );
 
         assertEq(amount0, -1 ether);
@@ -306,12 +262,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         // This is ETH -> TOKEN on an flipped pool
         // TOKEN is specified, ETH is unspecified
         (amount0, amount1) = anyPositionManager.captureDelta(
-            flippedPoolKey,
-            IPoolManager.SwapParams({
-                zeroForOne: false,
-                amountSpecified: 1 ether,
-                sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
-            }),
+            SwapParams({zeroForOne: false, amountSpecified: 1 ether, sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1}),
             toBeforeSwapDelta(1 ether, -1 ether)
         );
 
@@ -321,12 +272,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         // This is TOKEN -> ETH on an flipped pool
         // TOKEN is specified, ETH is unspecified
         (amount0, amount1) = anyPositionManager.captureDelta(
-            flippedPoolKey,
-            IPoolManager.SwapParams({
-                zeroForOne: true,
-                amountSpecified: -1 ether,
-                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
-            }),
+            SwapParams({zeroForOne: true, amountSpecified: -1 ether, sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1}),
             toBeforeSwapDelta(1 ether, -1 ether)
         );
 
@@ -336,12 +282,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         // This is TOKEN -> ETH on an flipped pool
         // ETH is specified, TOKEN is unspecified
         (amount0, amount1) = anyPositionManager.captureDelta(
-            flippedPoolKey,
-            IPoolManager.SwapParams({
-                zeroForOne: true,
-                amountSpecified: 1 ether,
-                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
-            }),
+            SwapParams({zeroForOne: true, amountSpecified: 1 ether, sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1}),
             toBeforeSwapDelta(-1 ether, 1 ether)
         );
 
@@ -353,7 +294,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         _approveCreator(address(this));
 
         anyPositionManager.flaunch(
-            AnyPositionManager.FlaunchParams({
+            IAnyPositionManager.FlaunchParams({
                 memecoin: memecoin,
                 creator: address(this),
                 creatorFeeAllocation: 50_00,
@@ -378,7 +319,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         _approveCreator(address(this));
 
         anyPositionManager.flaunch(
-            AnyPositionManager.FlaunchParams({
+            IAnyPositionManager.FlaunchParams({
                 memecoin: memecoin,
                 creator: address(this),
                 creatorFeeAllocation: 50_00,
@@ -400,7 +341,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         _approveCreator(address(this));
 
         anyPositionManager.flaunch(
-            AnyPositionManager.FlaunchParams({
+            IAnyPositionManager.FlaunchParams({
                 memecoin: memecoin,
                 creator: address(this),
                 creatorFeeAllocation: 50_00,
@@ -417,13 +358,19 @@ contract AnyPositionManagerTest is FlaunchTest {
         anyFlaunch.burn(tokenId);
     }
 
-    function test_CannotFlaunchWithInvalidCreatorFeeAllocation(uint24 _creatorFeeAllocation) public {
+    function test_CannotFlaunchWithInvalidCreatorFeeAllocation(
+        uint24 _creatorFeeAllocation
+    ) public {
         vm.assume(_creatorFeeAllocation > 100_00);
         _approveCreator(address(this));
 
-        vm.expectRevert(abi.encodeWithSelector(AnyFlaunch.CreatorFeeAllocationInvalid.selector, _creatorFeeAllocation, anyFlaunch.MAX_CREATOR_ALLOCATION()));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAnyFlaunch.CreatorFeeAllocationInvalid.selector, _creatorFeeAllocation, anyFlaunch.MAX_CREATOR_ALLOCATION()
+            )
+        );
         anyPositionManager.flaunch(
-            AnyPositionManager.FlaunchParams({
+            IAnyPositionManager.FlaunchParams({
                 memecoin: memecoin,
                 creator: address(this),
                 creatorFeeAllocation: _creatorFeeAllocation,
@@ -433,7 +380,9 @@ contract AnyPositionManagerTest is FlaunchTest {
         );
     }
 
-    function test_CanSwap(uint _seed) public {
+    function test_CanSwap(
+        uint _seed
+    ) public {
         _flaunch();
 
         // Ensure we have enough tokens for liquidity and approve them for our {PoolManager}
@@ -446,7 +395,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         // Modify our position with additional ETH and tokens
         poolModifyPosition.modifyLiquidity(
             poolKey,
-            IPoolManager.ModifyLiquidityParams({
+            ModifyLiquidityParams({
                 tickLower: TickMath.minUsableTick(poolKey.tickSpacing),
                 tickUpper: TickMath.maxUsableTick(poolKey.tickSpacing),
                 liquidityDelta: 10 ether,
@@ -469,7 +418,7 @@ contract AnyPositionManagerTest is FlaunchTest {
 
             poolSwap.swap(
                 poolKey,
-                IPoolManager.SwapParams({
+                SwapParams({
                     zeroForOne: zeroForOne,
                     amountSpecified: flipSwapValue ? swapValue : -swapValue,
                     sqrtPriceLimitX96: zeroForOne ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1
@@ -491,7 +440,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         // Modify our position with additional ETH and tokens
         poolModifyPosition.modifyLiquidity(
             poolKey,
-            IPoolManager.ModifyLiquidityParams({
+            ModifyLiquidityParams({
                 tickLower: TickMath.minUsableTick(poolKey.tickSpacing),
                 tickUpper: TickMath.maxUsableTick(poolKey.tickSpacing),
                 liquidityDelta: 10 ether,
@@ -504,24 +453,10 @@ contract AnyPositionManagerTest is FlaunchTest {
         IERC20(memecoin).approve(address(poolSwap), type(uint).max);
 
         // Make a swap big enough to trigger the BidWall
-        poolSwap.swap(
-            poolKey,
-            IPoolManager.SwapParams({
-                zeroForOne: true,
-                amountSpecified: -1000 ether,
-                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
-            })
-        );
+        poolSwap.swap(poolKey, SwapParams({zeroForOne: true, amountSpecified: -1000 ether, sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1}));
 
         // Now make a swap that will hit the BidWall liquidity
-        poolSwap.swap(
-            poolKey,
-            IPoolManager.SwapParams({
-                zeroForOne: false,
-                amountSpecified: -1 ether,
-                sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
-            })
-        );
+        poolSwap.swap(poolKey, SwapParams({zeroForOne: false, amountSpecified: -1 ether, sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1}));
     }
 
     function test_CanCloseBidWall() public {
@@ -530,7 +465,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         PoolKey memory poolKey = anyPositionManager.poolKey(memecoin);
 
         anyBidWall.setDisabledState(poolKey, true);
-        (bool disabled, , , , , ) = anyBidWall.poolInfo(poolKey.toId());
+        (bool disabled,,,,,) = anyBidWall.poolInfo(poolKey.toId());
         assertEq(disabled, true);
     }
 
@@ -556,7 +491,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         // Modify our position with additional ETH and tokens
         poolModifyPosition.modifyLiquidity(
             poolKey,
-            IPoolManager.ModifyLiquidityParams({
+            ModifyLiquidityParams({
                 tickLower: TickMath.minUsableTick(poolKey.tickSpacing),
                 tickUpper: TickMath.maxUsableTick(poolKey.tickSpacing),
                 liquidityDelta: 10 ether,
@@ -569,14 +504,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         IERC20(memecoin).approve(address(poolSwap), type(uint).max);
 
         // Make a swap big enough to trigger the BidWall
-        poolSwap.swap(
-            poolKey,
-            IPoolManager.SwapParams({
-                zeroForOne: true,
-                amountSpecified: -1000 ether,
-                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
-            })
-        );
+        poolSwap.swap(poolKey, SwapParams({zeroForOne: true, amountSpecified: -1000 ether, sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1}));
 
         // Move past our timeout
         vm.warp(block.timestamp + bidWall.staleTimeWindow());
@@ -584,20 +512,15 @@ contract AnyPositionManagerTest is FlaunchTest {
         // We can expect the emit of the `BidWallRepositioned` event to confirm that it has
         // been hit correctly.
         vm.expectEmit();
-        emit BidWall.BidWallRepositioned(poolKey.toId(), 4122467602127208476, -44160, -44100);
+        emit IBidWall.BidWallRepositioned(poolKey.toId(), 4122467602127208476, -44160, -44100);
 
         // Now make a swap that will hit the BidWall liquidity
-        poolSwap.swap(
-            poolKey,
-            IPoolManager.SwapParams({
-                zeroForOne: false,
-                amountSpecified: -1 ether,
-                sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
-            })
-        );
+        poolSwap.swap(poolKey, SwapParams({zeroForOne: false, amountSpecified: -1 ether, sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1}));
     }
 
-    function _approveCreator(address _creator) internal {
+    function _approveCreator(
+        address _creator
+    ) internal {
         anyPositionManager.approveCreator(_creator, true);
     }
 
@@ -605,7 +528,7 @@ contract AnyPositionManagerTest is FlaunchTest {
         _approveCreator(address(this));
 
         anyPositionManager.flaunch(
-            AnyPositionManager.FlaunchParams({
+            IAnyPositionManager.FlaunchParams({
                 memecoin: memecoin,
                 creator: address(this),
                 creatorFeeAllocation: 50_00,

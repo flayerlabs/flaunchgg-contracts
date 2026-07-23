@@ -1,8 +1,0 @@
-.prettierrc
-foundry.toml
-out
-lib/
-cache/
-*.sol
-dist/
-snapshots/

@@ -1,0 +1,19 @@
+{
+  "abi": [
+    {
+      "type": "error",
+      "name": "ExceedsCapacity",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "IndexOutOfBounds",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ValueIsZeroSentinel",
+      "inputs": []
+    }
+  ]
+}

@@ -7,9 +7,7 @@ import {WhitelistVerifier} from '@flaunch/creators/verifiers/WhitelistVerifier.s
 
 import {Test} from 'forge-std/Test.sol';
 
-
 contract WhitelistVerifierTest is Test {
-
     address payable public constant ANY_POSITION_MANAGER_ADDRESS = payable(0x2aD43d0618b1d8a0CC75CF716Cf0bf64070725dC);
 
     AnyPositionManager public anyPositionManager;
@@ -18,7 +16,7 @@ contract WhitelistVerifierTest is Test {
 
     function setUp() public {
         vm.createSelectFork(vm.envString('BASE_RPC_URL'));
-        
+
         // Register our AnyPositionManager
         anyPositionManager = AnyPositionManager(ANY_POSITION_MANAGER_ADDRESS);
 
@@ -27,7 +25,7 @@ contract WhitelistVerifierTest is Test {
 
         // Register the verifier
         verifier = new WhitelistVerifier();
-        
+
         // Add the verifier to the importer
         vm.startPrank(anyPositionManager.owner());
         anyPositionManager.approveCreator(address(importer), true);
@@ -40,10 +38,17 @@ contract WhitelistVerifierTest is Test {
         importer.addVerifier(address(verifier));
     }
 
-    function test_CanImportValidToken(address _token, address _sender) public {
+    function test_CanImportValidToken(
+        address _token,
+        address _sender
+    ) public {
         // Ensure that our addresses are not zero address
         vm.assume(_token != address(0));
         vm.assume(_sender != address(0));
+
+        // Ensure the fuzzed token cannot collide with the native token, which would
+        // produce a PoolKey with currency0 == currency1
+        vm.assume(_token != anyPositionManager.nativeToken());
 
         // Approve the sender
         verifier.setWhitelist(_sender, _token);
@@ -56,7 +61,9 @@ contract WhitelistVerifierTest is Test {
         importer.initialize(_token, 80_00, 5000e6);
     }
 
-    function test_CannotImportInvalidToken_UnknownMemecoin(address _token) public {
+    function test_CannotImportInvalidToken_UnknownMemecoin(
+        address _token
+    ) public {
         // Ensure that the token is not a zero address
         vm.assume(_token != address(0));
 
@@ -71,7 +78,10 @@ contract WhitelistVerifierTest is Test {
         importer.initialize(address(0), 80_00, 5000e6);
     }
 
-    function test_CannotImportInvalidToken_UnknownSender(address _token, address _sender) public {
+    function test_CannotImportInvalidToken_UnknownSender(
+        address _token,
+        address _sender
+    ) public {
         // Ensure that the token is not a zero address
         vm.assume(_token != address(0));
 
@@ -91,5 +101,4 @@ contract WhitelistVerifierTest is Test {
 
         vm.stopPrank();
     }
-
 }

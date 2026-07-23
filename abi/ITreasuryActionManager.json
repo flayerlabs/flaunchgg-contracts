@@ -1,0 +1,75 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "approveAction",
+      "inputs": [
+        {
+          "name": "_action",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "approvedActions",
+      "inputs": [
+        {
+          "name": "_action",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "_approved",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "unapproveAction",
+      "inputs": [
+        {
+          "name": "_action",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "ActionApproved",
+      "inputs": [
+        {
+          "name": "_action",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "ActionUnapproved",
+      "inputs": [
+        {
+          "name": "_action",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    }
+  ]
+}

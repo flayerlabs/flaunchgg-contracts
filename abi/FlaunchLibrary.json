@@ -1,0 +1,43 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "launchTickRanges",
+      "inputs": [
+        {
+          "name": "_initialTick",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "_nativeIsZero",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ethTickLower_",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "ethTickUpper_",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "memeTickLower_",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "memeTickUpper_",
+          "type": "int24",
+          "internalType": "int24"
+        }
+      ],
+      "stateMutability": "pure"
+    }
+  ]
+}

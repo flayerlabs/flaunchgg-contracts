@@ -3,26 +3,26 @@ pragma solidity ^0.8.26;
 
 import 'forge-std/console.sol';
 
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
-import {IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
 import {MockERC20} from '@uniswap/v4-core/lib/forge-std/src/mocks/MockERC20.sol';
+import {IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
 
 import {AnyPositionManager} from '@flaunch/AnyPositionManager.sol';
-import {FairLaunch} from '@flaunch/hooks/FairLaunch.sol';
-import {IndexerSubscriber} from '@flaunch/subscribers/Indexer.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
-import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
 import {TrustedSignerFeeCalculator} from '@flaunch/fees/TrustedSignerFeeCalculator.sol';
+import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
+import {IndexerSubscriber} from '@flaunch/subscribers/Indexer.sol';
 
 import {IFeeCalculator} from '@flaunch-interfaces/IFeeCalculator.sol';
+import {IIndexerSubscriber} from '@flaunch-interfaces/IIndexerSubscriber.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
-
+import {IAnyPositionManager} from '@flaunch-interfaces/IAnyPositionManager.sol';
+import {IPositionManager} from '@flaunch-interfaces/IPositionManager.sol';
 
 contract IndexerTest is FlaunchTest {
-
     using PoolIdLibrary for PoolKey;
 
     // Define our legacy struct
@@ -39,7 +39,7 @@ contract IndexerTest is FlaunchTest {
         bytes feeCalculatorParams;
     }
 
-    constructor () {
+    constructor() {
         // Deploy our platform
         _deployPlatform();
 
@@ -75,14 +75,11 @@ contract IndexerTest is FlaunchTest {
         _deploySubscriber();
         _setNotifier();
 
-        IndexerSubscriber.AddIndexParams[] memory indexParams = new IndexerSubscriber.AddIndexParams[](1);
+        IIndexerSubscriber.AddIndexParams[] memory indexParams = new IIndexerSubscriber.AddIndexParams[](1);
         uint[] memory tokenIds = new uint[](2);
         tokenIds[0] = tokenId1;
         tokenIds[1] = tokenId2;
-        indexParams[0] = IndexerSubscriber.AddIndexParams({
-            flaunch: address(flaunch),
-            tokenIds: tokenIds
-        });
+        indexParams[0] = IIndexerSubscriber.AddIndexParams({flaunch: address(flaunch), tokenIds: tokenIds});
 
         indexer.addIndex(indexParams);
 
@@ -117,106 +114,6 @@ contract IndexerTest is FlaunchTest {
         assertEq(indexedTokenId, 0);
     }
 
-    function testFork_IndexCorrectly() public forkBaseBlock(35_654_101) {
-        address[] memory positionManagers = new address[](3);
-        positionManagers[0] = 0xF785bb58059FAB6fb19bDdA2CB9078d9E546Efdc;
-        positionManagers[1] = 0xB903b0AB7Bcee8f5E4D8C9b10a71aaC7135d6FdC;
-        positionManagers[2] = 0x23321f11a6d44Fd1ab790044FdFDE5758c902FDc;
-
-        address[] memory anyPositionManagers = new address[](1);
-        anyPositionManagers[0] = 0x8DC3b85e1dc1C846ebf3971179a751896842e5dC;
-
-        // Register our indexer
-        IndexerSubscriber indexer = IndexerSubscriber(0x7C6088C1185FbB770deB1CA7DdeeD4ba57659663);
-
-        // Iterate over the position managers we are testing
-        for (uint i = 0; i < positionManagers.length; ++i) {
-            console.log('Testing PositionManager:', positionManagers[i]);
-
-            // Register the PositionManager
-            PositionManager positionManager = PositionManager(payable(positionManagers[i]));
-
-            // Set our calculators to boring static ones for simpler, generalized transactions
-            vm.startPrank(positionManager.owner());
-            positionManager.setFeeCalculator(IFeeCalculator(0xaA27191eB96F8C9F1f50519C53e6512228f2faB9));
-            positionManager.setFairLaunchFeeCalculator(IFeeCalculator(0xaA27191eB96F8C9F1f50519C53e6512228f2faB9));
-            positionManager.setInitialPrice(0xf318E170D10A1F0d9b57211e908a7f081123E7f6);
-            vm.stopPrank();
-
-            // Flaunch a token. The configuration doesn't really matter, we just need to ensure that it is indexed correctly.
-            address memecoin = positionManager.flaunch(
-                PositionManager.FlaunchParams({
-                    name: 'name',
-                    symbol: 'symbol',
-                    tokenUri: 'https://token.gg/',
-                    initialTokenFairLaunch: supplyShare(50),
-                    fairLaunchDuration: 30 minutes,
-                    premineAmount: 0,
-                    creator: address(this),
-                    creatorFeeAllocation: 50_00,
-                    flaunchAt: block.timestamp,
-                    initialPriceParams: abi.encode(1000e6),
-                    feeCalculatorParams: abi.encode(false, 0, 0)
-                })
-            );
-
-            // Get the poolKey for the token
-            PoolKey memory poolKey = positionManager.poolKey(memecoin);
-
-            // Validate the PoolKey by checking the currency1 matches the memecoin
-            assertEq(Currency.unwrap(poolKey.currency1), memecoin);
-
-            // Get the poolIndex information from the indexer
-            (address indexedFlaunch, address indexedMemecoin,,) = indexer.poolIndex(poolKey.toId());
-            assertEq(indexedFlaunch, address(positionManager.flaunchContract()));
-            assertEq(indexedMemecoin, memecoin);
-        }
-
-        // Iterate over the AnyPositionManagers we are testing
-        for (uint i = 0; i < anyPositionManagers.length; ++i) {
-            console.log('Testing AnyPositionManager:', anyPositionManagers[i]);
-
-            // Set up a MockERC20 token to whitelist and test flaunching with
-            MockERC20 newToken = new MockERC20();
-            newToken.initialize('name', 'symbol', 18);
-            address memecoin = address(newToken);
-
-            // Register the PositionManager
-            AnyPositionManager positionManager = AnyPositionManager(payable(anyPositionManagers[i]));
-
-            vm.prank(positionManager.owner());
-            positionManager.approveCreator(address(this), true);
-
-            // Set our calculators to boring static ones for simpler, generalized transactions
-            vm.startPrank(positionManager.owner());
-            positionManager.setFeeCalculator(IFeeCalculator(0xaA27191eB96F8C9F1f50519C53e6512228f2faB9));
-            positionManager.setInitialPrice(0xf318E170D10A1F0d9b57211e908a7f081123E7f6);
-            vm.stopPrank();
-
-            // Flaunch a token. The configuration doesn't really matter, we just need to ensure that it is indexed correctly.
-            positionManager.flaunch(
-                AnyPositionManager.FlaunchParams(
-                    memecoin,
-                    address(this),
-                    50_00,
-                    abi.encode(1000e6),
-                    abi.encode(false, 0, 0)
-                )
-            );
-
-            // Get the poolKey for the token
-            PoolKey memory poolKey = positionManager.poolKey(memecoin);
-
-            // Validate the PoolKey by checking the currency1 matches the memecoin
-            assertEq(Currency.unwrap(poolKey.currency1), memecoin);
-
-            // Get the poolIndex information from the indexer
-            (address indexedFlaunch, address indexedMemecoin,,) = indexer.poolIndex(poolKey.toId());
-            assertEq(indexedFlaunch, address(positionManager.flaunchContract()));
-            assertEq(indexedMemecoin, memecoin);
-        }
-    }
-
     function _deploySubscriber() internal {
         positionManager.notifier().subscribe(address(indexer), '');
     }
@@ -226,7 +123,11 @@ contract IndexerTest is FlaunchTest {
     }
 
     function _flaunchToken() internal returns (address memecoin_, uint tokenId_, PoolKey memory poolKey_) {
-        memecoin_ = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(50), 30 minutes, 0, address(this), 50_00, 0, abi.encode(''), abi.encode(1_000)));
+        memecoin_ = positionManager.flaunch(
+            IPositionManager.FlaunchParams(
+                'name', 'symbol', 'https://token.gg/', 0, address(this), 50_00, 0, abi.encode(''), abi.encode(1_000)
+            )
+        );
         tokenId_ = flaunch.tokenId(memecoin_);
         poolKey_ = PoolKey({
             currency0: Currency.wrap(address(flETH)),
@@ -237,4 +138,117 @@ contract IndexerTest is FlaunchTest {
         });
     }
 
+    function test_CanAddVerifiedFlaunch() public {
+        address testFlaunch = address(0x1234);
+
+        // Initially should not be verified
+        assertEq(indexer.isVerifiedFlaunch(testFlaunch), false, 'Flaunch should not be verified initially');
+
+        // Expect the FlaunchVerified event to be emitted
+        vm.expectEmit();
+        emit IIndexerSubscriber.FlaunchVerified(testFlaunch, true);
+
+        // Add the verified flaunch as owner
+        indexer.addVerifiedFlaunch(testFlaunch);
+
+        // Verify it was added
+        assertEq(indexer.isVerifiedFlaunch(testFlaunch), true, 'Flaunch should be verified after adding');
+    }
+
+    function test_CanRemoveVerifiedFlaunch() public {
+        address testFlaunch = address(0x1234);
+
+        // First add it
+        indexer.addVerifiedFlaunch(testFlaunch);
+        assertEq(indexer.isVerifiedFlaunch(testFlaunch), true, 'Flaunch should be verified after adding');
+
+        // Expect the FlaunchVerified event to be emitted with false
+        vm.expectEmit();
+        emit IIndexerSubscriber.FlaunchVerified(testFlaunch, false);
+
+        // Remove the verified flaunch as owner
+        indexer.removeVerifiedFlaunch(testFlaunch);
+
+        // Verify it was removed
+        assertEq(indexer.isVerifiedFlaunch(testFlaunch), false, 'Flaunch should not be verified after removing');
+
+        // Also verify it was removed by trying to use it in addIndex - it should revert
+        IIndexerSubscriber.AddIndexParams[] memory indexParams = new IIndexerSubscriber.AddIndexParams[](1);
+        uint[] memory tokenIds = new uint[](1);
+        tokenIds[0] = 1;
+        indexParams[0] = IIndexerSubscriber.AddIndexParams({flaunch: testFlaunch, tokenIds: tokenIds});
+
+        vm.expectRevert(abi.encodeWithSelector(IIndexerSubscriber.FlaunchNotVerified.selector, testFlaunch));
+        indexer.addIndex(indexParams);
+    }
+
+    function test_CannotAddVerifiedFlaunchAsNonOwner() public {
+        address testFlaunch = address(0x1234);
+        address nonOwner = address(0x5678);
+
+        // Try to add as non-owner - should revert with Unauthorized
+        vm.prank(nonOwner);
+        vm.expectRevert();
+        indexer.addVerifiedFlaunch(testFlaunch);
+    }
+
+    function test_CannotRemoveVerifiedFlaunchAsNonOwner() public {
+        address testFlaunch = address(0x1234);
+
+        // First add it as owner
+        indexer.addVerifiedFlaunch(testFlaunch);
+
+        // Try to remove as non-owner - should revert with Unauthorized
+        address nonOwner = address(0x5678);
+        vm.prank(nonOwner);
+        vm.expectRevert();
+        indexer.removeVerifiedFlaunch(testFlaunch);
+    }
+
+    function test_CannotIndexAgainstUnverifiedFlaunch() public {
+        // Create a real token to get valid data
+        (address memecoin, uint tokenId, PoolKey memory poolKey) = _flaunchToken();
+
+        // Create an unverified Flaunch contract address
+        address unverifiedFlaunch = address(0x9999);
+
+        // Verify it's not verified
+        assertEq(indexer.isVerifiedFlaunch(unverifiedFlaunch), false, 'Flaunch should not be verified');
+
+        // Try to add index with unverified flaunch - should revert
+        IIndexerSubscriber.AddIndexParams[] memory indexParams = new IIndexerSubscriber.AddIndexParams[](1);
+        uint[] memory tokenIds = new uint[](1);
+        tokenIds[0] = tokenId;
+        indexParams[0] = IIndexerSubscriber.AddIndexParams({flaunch: unverifiedFlaunch, tokenIds: tokenIds});
+
+        vm.expectRevert(abi.encodeWithSelector(IIndexerSubscriber.FlaunchNotVerified.selector, unverifiedFlaunch));
+        indexer.addIndex(indexParams);
+    }
+
+    function test_CanIndexAgainstVerifiedFlaunch() public {
+        // Create a real token to get valid data
+        (address memecoin, uint tokenId, PoolKey memory poolKey) = _flaunchToken();
+
+        // Verify the flaunch contract
+        indexer.addVerifiedFlaunch(address(flaunch));
+        assertEq(indexer.isVerifiedFlaunch(address(flaunch)), true, 'Flaunch should be verified');
+
+        // Now add index should work
+        IIndexerSubscriber.AddIndexParams[] memory indexParams = new IIndexerSubscriber.AddIndexParams[](1);
+        uint[] memory tokenIds = new uint[](1);
+        tokenIds[0] = tokenId;
+        indexParams[0] = IIndexerSubscriber.AddIndexParams({flaunch: address(flaunch), tokenIds: tokenIds});
+
+        // Expect PoolIndexed event
+        vm.expectEmit();
+        emit IIndexerSubscriber.PoolIndexed(poolKey.toId(), address(flaunch), memecoin, flaunch.memecoinTreasury(tokenId), tokenId);
+
+        indexer.addIndex(indexParams);
+
+        // Verify it was indexed
+        (address indexedFlaunch, address indexedMemecoin,, uint indexedTokenId) = indexer.poolIndex(poolKey.toId());
+        assertEq(indexedFlaunch, address(flaunch));
+        assertEq(indexedMemecoin, memecoin);
+        assertEq(indexedTokenId, tokenId);
+    }
 }

@@ -45,7 +45,7 @@
         {
           "name": "",
           "type": "tuple",
-          "internalType": "struct FeeExemptions.FeeExemption",
+          "internalType": "struct IFeeExemptions.FeeExemption",
           "components": [
             {
               "name": "flatFee",

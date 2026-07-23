@@ -5,9 +5,7 @@ import {FlayBurner} from '@flaunch/libraries/FlayBurner.sol';
 
 import {FlaunchTest} from '../FlaunchTest.sol';
 
-
 contract FlayBurnerTest is FlaunchTest {
-
     address owner;
     address user;
 
@@ -29,7 +27,9 @@ contract FlayBurnerTest is FlaunchTest {
         assertEq(address(flayBurner.fleth()), address(flETH));
     }
 
-    function test_CanSetBurner(address payable _burner) public {
+    function test_CanSetBurner(
+        address payable _burner
+    ) public {
         vm.expectEmit(true, true, false, false);
         emit FlayBurner.BurnerUpdated(_burner);
 
@@ -37,7 +37,9 @@ contract FlayBurnerTest is FlaunchTest {
         assertEq(flayBurner.burner(), _burner);
     }
 
-    function test_CanBuyAndBurnIfNoBurnerSet(uint _amount) public {
+    function test_CanBuyAndBurnIfNoBurnerSet(
+        uint _amount
+    ) public {
         vm.startPrank(user);
 
         // Deposit some ETH -> flETH to the user
@@ -56,7 +58,10 @@ contract FlayBurnerTest is FlaunchTest {
         vm.stopPrank();
     }
 
-    function test_CanBuyAndBurn(uint _amount, uint _sendAmount) public {
+    function test_CanBuyAndBurn(
+        uint _amount,
+        uint _sendAmount
+    ) public {
         vm.assume(_sendAmount < _amount);
 
         vm.startPrank(user);
@@ -82,7 +87,9 @@ contract FlayBurnerTest is FlaunchTest {
         assertEq(flETH.balanceOf(user), _amount - _sendAmount);
     }
 
-    function test_CanBuyAndBurnBalanceOfSelf(uint _amount) public {
+    function test_CanBuyAndBurnBalanceOfSelf(
+        uint _amount
+    ) public {
         vm.startPrank(user);
 
         // Deposit some ETH -> flETH to the user
@@ -105,7 +112,9 @@ contract FlayBurnerTest is FlaunchTest {
         assertEq(flETH.balanceOf(user), 0);
     }
 
-    function test_CanSendEthAndIsConvertedToFleth(uint64 _amount) public {
+    function test_CanSendEthAndIsConvertedToFleth(
+        uint64 _amount
+    ) public {
         vm.assume(_amount != 0);
 
         deal(user, _amount);

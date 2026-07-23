@@ -1,0 +1,13 @@
+[submodule "lib/forge-std"]
+	path = lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "lib/forge-chronicles"]
+	path = lib/forge-chronicles
+	url = https://github.com/0xPolygon/forge-chronicles
+[submodule "lib/briefcase"]
+	path = lib/briefcase
+	url = https://github.com/Uniswap/briefcase
+[submodule "lib/v4-periphery"]
+	path = lib/v4-periphery
+	url = https://github.com/Uniswap/v4-periphery
+

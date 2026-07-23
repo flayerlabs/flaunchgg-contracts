@@ -1,0 +1,383 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "addTrustedSigner",
+      "inputs": [
+        {
+          "name": "_signer",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "fairLaunchSettings",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "internalType": "PoolId"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "enabled",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "walletCap",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "txCap",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "flETH",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isTrustedSigner",
+      "inputs": [
+        {
+          "name": "_signer",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "valid_",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "maxTokensOut",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "internalType": "PoolId"
+        },
+        {
+          "name": "_origin",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "hasCap_",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "maxTokensOut_",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "removeTrustedSigner",
+      "inputs": [
+        {
+          "name": "_signer",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setTrustedPoolKeySigner",
+      "inputs": [
+        {
+          "name": "_poolKey",
+          "type": "tuple",
+          "internalType": "struct PoolKey",
+          "components": [
+            {
+              "name": "currency0",
+              "type": "address",
+              "internalType": "Currency"
+            },
+            {
+              "name": "currency1",
+              "type": "address",
+              "internalType": "Currency"
+            },
+            {
+              "name": "fee",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "tickSpacing",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "hooks",
+              "type": "address",
+              "internalType": "contract IHooks"
+            }
+          ]
+        },
+        {
+          "name": "_signer",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "trustedPoolKeySigner",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "internalType": "PoolId"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "signer",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "enabled",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "walletPurchasedAmount",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "internalType": "PoolId"
+        },
+        {
+          "name": "_wallet",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "_amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "PoolKeyAccessUpdated",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "PoolId"
+        },
+        {
+          "name": "_settings",
+          "type": "tuple",
+          "indexed": false,
+          "internalType": "struct ITrustedSignerFeeCalculator.FairLaunchSettings",
+          "components": [
+            {
+              "name": "enabled",
+              "type": "bool",
+              "internalType": "bool"
+            },
+            {
+              "name": "walletCap",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "txCap",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "PoolKeySignerUpdated",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "PoolId"
+        },
+        {
+          "name": "_signer",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "TrustedSignerUpdated",
+      "inputs": [
+        {
+          "name": "_signer",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "_isTrusted",
+          "type": "bool",
+          "indexed": false,
+          "internalType": "bool"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "BuyerNotTransactionOrigin",
+      "inputs": [
+        {
+          "name": "_buyer",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_txOrigin",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "CallerNotPositionManager",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "DeadlineExpired",
+      "inputs": [
+        {
+          "name": "_deadline",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidPoolKey",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidSigner",
+      "inputs": [
+        {
+          "name": "_invalidSigner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NotPoolCreator",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "SignatureAlreadyUsed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "SignerAlreadyAdded",
+      "inputs": [
+        {
+          "name": "_signer",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "SignerDoesNotExist",
+      "inputs": [
+        {
+          "name": "_signer",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "TransactionCapExceeded",
+      "inputs": [
+        {
+          "name": "_requestedAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "_maxTokensOut",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    }
+  ]
+}

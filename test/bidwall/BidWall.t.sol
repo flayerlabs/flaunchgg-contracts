@@ -1,27 +1,30 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
-import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 import {PoolManager} from '@uniswap/v4-core/src/PoolManager.sol';
-import {PoolIdLibrary, PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
 import {Hooks, IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
-import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
 import {StateLibrary} from '@uniswap/v4-core/src/libraries/StateLibrary.sol';
+import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {BalanceDelta} from '@uniswap/v4-core/src/types/BalanceDelta.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
+import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
+import {ModifyLiquidityParams, SwapParams} from '@uniswap/v4-core/src/types/PoolOperation.sol';
 
-import {BidWall} from '@flaunch/bidwall/BidWall.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
+import {BidWall} from '@flaunch/bidwall/BidWall.sol';
 import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
 
 import {MemecoinMock} from 'test/mocks/MemecoinMock.sol';
 
-import {FlaunchTest} from '../FlaunchTest.sol';
+import {Vm} from 'forge-std/Vm.sol';
 
+import {FlaunchTest} from '../FlaunchTest.sol';
+import {IBidWall} from '@flaunch-interfaces/IBidWall.sol';
+import {IPositionManager} from '@flaunch-interfaces/IPositionManager.sol';
 
 contract BidWallTest is FlaunchTest {
-
     using PoolIdLibrary for PoolKey;
     using StateLibrary for PoolManager;
 
@@ -32,12 +35,16 @@ contract BidWallTest is FlaunchTest {
 
     MemecoinMock memecoin;
 
-    constructor () {
+    constructor() {
         // Deploy our platform
         _deployPlatform();
 
         // Create our memecoin
-        address _memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(50), 30 minutes, 0, address(this), 50_00, 0, abi.encode(''), abi.encode(1_000)));
+        address _memecoin = positionManager.flaunch(
+            IPositionManager.FlaunchParams(
+                'name', 'symbol', 'https://token.gg/', 0, address(this), 50_00, 0, abi.encode(''), abi.encode(1_000)
+            )
+        );
         memecoin = MemecoinMock(_memecoin);
 
         uint tokenId = flaunch.tokenId(_memecoin);
@@ -77,7 +84,7 @@ contract BidWallTest is FlaunchTest {
         assertEq(isHookDisabled, false);
 
         vm.expectEmit();
-        emit BidWall.BidWallDisabledStateUpdated(poolKey.toId(), true);
+        emit IBidWall.BidWallDisabledStateUpdated(poolKey.toId(), true);
 
         // it should update the hook disabled status
         bidWall.setDisabledState({_key: poolKey, _disable: true});
@@ -85,7 +92,7 @@ contract BidWallTest is FlaunchTest {
         assertEq(isHookDisabled, true);
 
         vm.expectEmit();
-        emit BidWall.BidWallDisabledStateUpdated(poolKey.toId(), false);
+        emit IBidWall.BidWallDisabledStateUpdated(poolKey.toId(), false);
 
         // enable back the hook
         bidWall.setDisabledState({_key: poolKey, _disable: false});
@@ -95,23 +102,25 @@ contract BidWallTest is FlaunchTest {
 
     function test_CannotDisableWithoutCreator() external {
         vm.prank(address(1));
-        vm.expectRevert(BidWall.CallerIsNotCreator.selector);
+        vm.expectRevert(IBidWall.CallerIsNotCreator.selector);
         bidWall.setDisabledState({_key: poolKey, _disable: true});
     }
 
-    function test_CannotDisableBidWallWithInvalidPoolKey(uint24 _invalidFee) public {
+    function test_CannotDisableBidWallWithInvalidPoolKey(
+        uint24 _invalidFee
+    ) public {
         // Update our PoolKey to modify the fee to be different. This should invalidate the PoolId
         // that is generated and prevent the BidWall from disabling. The maximum value is also set
         // as defined in the {PoolKey} struct definition.
         vm.assume(_invalidFee != poolKey.fee && _invalidFee < 1_000_000);
         poolKey.fee = _invalidFee;
 
-        vm.expectRevert(abi.encodeWithSelector(PositionManager.UnknownPool.selector, poolKey.toId()));
+        vm.expectRevert(abi.encodeWithSelector(IPositionManager.UnknownPool.selector, poolKey.toId()));
         bidWall.setDisabledState({_key: poolKey, _disable: true});
     }
 
     function test_CannotCallCloseBidWallDirectly() external {
-        vm.expectRevert(BidWall.NotPositionManager.selector);
+        vm.expectRevert(IBidWall.NotPositionManager.selector);
         bidWall.closeBidWall(poolKey);
     }
 
@@ -121,16 +130,10 @@ contract BidWallTest is FlaunchTest {
 
         // Make a swap as alice
         vm.startPrank(alice);
-        _swap(
-            IPoolManager.SwapParams({
-                zeroForOne: true,
-                amountSpecified: 5 ether,
-                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
-            })
-        );
+        _swap(SwapParams({zeroForOne: true, amountSpecified: 5 ether, sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1}));
 
         // The swap fee won't have been transferred, but instead allocated
-        assertEq(positionManager.feeEscrow().balances(memecoinTreasury), 0.011277785202559277 ether);
+        assertEq(positionManager.feeEscrow().balances(memecoinTreasury), 0.011277785202558418 ether);
 
         // Check the pool has no pending fees for the bidwall
         (,,,, uint pendingETHFees,) = bidWall.poolInfo(poolKey.toId());
@@ -139,13 +142,7 @@ contract BidWallTest is FlaunchTest {
 
     function test_CanStoreFeeAllocationInInternalSwapPoolWhenETHIsSpecifiedToken() external poolHasLiquidity {
         vm.startPrank(alice);
-        _swap(
-            IPoolManager.SwapParams({
-                zeroForOne: false,
-                amountSpecified: 5 ether,
-                sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
-            })
-        );
+        _swap(SwapParams({zeroForOne: false, amountSpecified: 5 ether, sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1}));
         vm.stopPrank();
 
         // Check the pool pending fees for the bidwall. Fees will have gone into
@@ -154,14 +151,22 @@ contract BidWallTest is FlaunchTest {
         assertEq(pendingETHFees, 0);
     }
 
-    function test_CanFundBidWallWithFees(bool _flipped) external flipTokens(_flipped) {
-        /** START: Flipped pre-run **/
+    function test_CanFundBidWallWithFees(
+        bool _flipped
+    ) external flipTokens(_flipped) {
+        /**
+         *
+         */
 
         // Provide the PoolManager with some ETH because otherwise it sulks about being poor
         deal(address(WETH), address(poolManager), 1000e27 ether);
 
         // Create our memecoin now that we have might have flipped.
-        address _memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(50), 30 minutes, 0, address(this), 50_00, 0, abi.encode(''), abi.encode(1_000)));
+        address _memecoin = positionManager.flaunch(
+            IPositionManager.FlaunchParams(
+                'name', 'symbol', 'https://token.gg/', 0, address(this), 50_00, 0, abi.encode(''), abi.encode(1_000)
+            )
+        );
         memecoin = MemecoinMock(_memecoin);
         memecoinTreasury = flaunch.memecoinTreasury(flaunch.tokenId(_memecoin));
 
@@ -186,20 +191,21 @@ contract BidWallTest is FlaunchTest {
         });
 
         // Update the {BidWall} reference
-        bidWall = positionManager.bidWall();
+        bidWall = BidWall(address(positionManager.bidWall()));
         bidWall.setSwapFeeThreshold(1);
 
-        /** END: Flipped pre-run **/
+        /**
+         *
+         */
 
         // Skip the FairLaunch from taking place
-        _bypassFairLaunch();
 
         vm.startPrank(alice);
 
         // Perform a swap that builds fees ready to convert
         poolSwap.swap(
             poolKey,
-            IPoolManager.SwapParams({
+            SwapParams({
                 zeroForOne: !_flipped,
                 amountSpecified: -2 ether,
                 sqrtPriceLimitX96: !_flipped ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1
@@ -208,19 +214,21 @@ contract BidWallTest is FlaunchTest {
 
         vm.warp(block.timestamp + 1 days);
 
-        vm.expectEmit();
-        emit BidWall.BidWallDeposit(poolKey.toId(), 9000000000000000, 9000000000000000);
-
-        // Perform another swap that will that will initialize the BidWall with the fees earned
+        // Perform another swap that will initialize the BidWall with the fees earned.
+        // Use vm.recordLogs because the swap also emits DelegateVotesChanged from the
+        // memecoin contract, which trips vm.expectEmit's strict next-emit check.
+        vm.recordLogs();
         poolSwap.swap(
             poolKey,
-            IPoolManager.SwapParams({
+            SwapParams({
                 zeroForOne: !_flipped,
                 amountSpecified: -2 ether,
                 sqrtPriceLimitX96: !_flipped ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1
             })
         );
         vm.stopPrank();
+
+        _assertBidWallDepositLogged(poolKey.toId(), 0.009 ether, 0.009 ether);
 
         // BidWall should be initialized now
         (, bool preIsInitialized, int24 tickLower, int24 tickUpper,,) = bidWall.poolInfo(poolKey.toId());
@@ -243,11 +251,7 @@ contract BidWallTest is FlaunchTest {
 
         // Confirm that our BidWall position now has zero liquidity
         (uint128 liquidity,,) = poolManager.getPositionInfo({
-            poolId: poolKey.toId(),
-            owner: address(bidWall),
-            tickLower: tickLower,
-            tickUpper: tickUpper,
-            salt: 'bidwall'
+            poolId: poolKey.toId(), owner: address(bidWall), tickLower: tickLower, tickUpper: tickUpper, salt: 'bidwall'
         });
         assertEq(liquidity, 0, 'Liquidity should be empty');
 
@@ -261,6 +265,106 @@ contract BidWallTest is FlaunchTest {
         bidWall.setDisabledState(poolKey, true);
     }
 
+    /**
+     * Taking the full creator allocation leaves the BidWall with no share of future fees, so the
+     * existing position must be unwound to the treasury rather than left stranded in the pool.
+     */
+    function test_CanCloseBidWallWhenCreatorTakesFullAllocation() external poolHasLiquidity {
+        // Build up a real BidWall position through swaps
+        vm.startPrank(alice);
+        _swap(SwapParams({zeroForOne: true, amountSpecified: 250 ether, sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1}));
+        vm.stopPrank();
+
+        (, bool preIsInitialized, int24 tickLower, int24 tickUpper,,) = bidWall.poolInfo(poolKey.toId());
+        assertEq(preIsInitialized, true, 'BidWall should be initialized');
+
+        uint preETHBalance = WETH.balanceOf(memecoinTreasury);
+
+        // Hand the creator the full allocation, which should close the BidWall out
+        positionManager.setCreatorFeeAllocation(address(memecoin), 100_00);
+
+        // The BidWall liquidity should have been returned to the treasury
+        assertGt(WETH.balanceOf(memecoinTreasury), preETHBalance, 'Treasury did not receive the BidWall liquidity');
+
+        (uint128 liquidity,,) = poolManager.getPositionInfo({
+            poolId: poolKey.toId(), owner: address(bidWall), tickLower: tickLower, tickUpper: tickUpper, salt: 'bidwall'
+        });
+        assertEq(liquidity, 0, 'BidWall position should be empty');
+
+        (, bool postIsInitialized,,, uint postPendingETHFees,) = bidWall.poolInfo(poolKey.toId());
+        assertEq(postIsInitialized, false, 'BidWall should no longer be initialized');
+        assertEq(postPendingETHFees, 0, 'BidWall should have no pending fees');
+
+        // The BidWall is left enabled, as the toggle is a separate dial to the allocation
+        assertEq(bidWall.isBidWallEnabled(poolKey.toId()), true, 'BidWall should still be enabled');
+    }
+
+    /**
+     * Re-setting the same allocation must not repeat the closure. A second `BidWallClosed` would
+     * be read by consumers as a real state transition, and would burn a {PoolManager} unlock
+     * against a position that has already been unwound.
+     */
+    function test_CannotRepeatBidWallClosureWithUnchangedAllocation() external poolHasLiquidity {
+        vm.startPrank(alice);
+        _swap(SwapParams({zeroForOne: true, amountSpecified: 250 ether, sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1}));
+        vm.stopPrank();
+
+        // The first call unwinds the position and legitimately reports the closure
+        vm.recordLogs();
+        positionManager.setCreatorFeeAllocation(address(memecoin), 100_00);
+        assertEq(_countBidWallClosedLogs(poolKey.toId()), 1, 'First call should close the BidWall');
+
+        // The second is a no-op, so it must neither close again nor re-emit
+        vm.recordLogs();
+        positionManager.setCreatorFeeAllocation(address(memecoin), 100_00);
+        assertEq(_countBidWallClosedLogs(poolKey.toId()), 0, 'Repeat call should not close again');
+    }
+
+    function _countBidWallClosedLogs(
+        PoolId _poolId
+    ) internal returns (uint count_) {
+        bytes32 sig = IBidWall.BidWallClosed.selector;
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint i; i < logs.length; ++i) {
+            if (logs[i].emitter == address(bidWall) && logs[i].topics[0] == sig && logs[i].topics[1] == PoolId.unwrap(_poolId)) {
+                ++count_;
+            }
+        }
+    }
+
+    /**
+     * Lowering the allocation again should let the BidWall rebuild a position from scratch.
+     *
+     * The auto-close only unwinds the position; it never sets the `disabled` flag, which is
+     * written solely by {setDisabledState}. The creator therefore does not need to make a
+     * separate call to re-open the BidWall, and fees must not divert to the {MemecoinTreasury}
+     * in the meantime.
+     */
+    function test_CanReopenBidWallAfterReducingCreatorAllocation() external poolHasLiquidity {
+        positionManager.setCreatorFeeAllocation(address(memecoin), 100_00);
+
+        // Closing the position must leave the BidWall enabled, otherwise the distribution would
+        // route the BidWall's share to the treasury instead
+        (bool disabled,,,,,) = bidWall.poolInfo(poolKey.toId());
+        assertEq(disabled, false, 'Auto-close should not disable the BidWall');
+        assertEq(bidWall.isBidWallEnabled(poolKey.toId()), true, 'BidWall should still be enabled');
+
+        positionManager.setCreatorFeeAllocation(address(memecoin), 0);
+
+        uint preTreasuryBalance = WETH.balanceOf(memecoinTreasury);
+
+        vm.startPrank(alice);
+        _swap(SwapParams({zeroForOne: true, amountSpecified: 250 ether, sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1}));
+        vm.stopPrank();
+
+        // The BidWall rebuilds without any explicit re-open call
+        (, bool initialized,,,,) = bidWall.poolInfo(poolKey.toId());
+        assertEq(initialized, true, 'BidWall should rebuild a position');
+
+        // And the treasury received none of the BidWall's share along the way
+        assertEq(WETH.balanceOf(memecoinTreasury), preTreasuryBalance, 'Treasury should not receive the BidWall share');
+    }
+
     function test_CanInitializeTheBidWallWithASwap() external poolHasLiquidity {
         // initially the BidWall is not initialized
         (, bool preIsInitialized,,,,) = bidWall.poolInfo(poolKey.toId());
@@ -268,13 +372,7 @@ contract BidWallTest is FlaunchTest {
 
         // create 0.6~ in swap fees, which will pass our threshold and initialize
         vm.startPrank(alice);
-        _swap(
-            IPoolManager.SwapParams({
-                zeroForOne: true,
-                amountSpecified: 250 ether,
-                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
-            })
-        );
+        _swap(SwapParams({zeroForOne: true, amountSpecified: 250 ether, sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1}));
         vm.stopPrank();
 
         // It should initialize the BidWall, just below the current price
@@ -282,117 +380,26 @@ contract BidWallTest is FlaunchTest {
         assertEq(initialized, true);
 
         (uint128 liquidity,,) = poolManager.getPositionInfo({
-            poolId: poolKey.toId(),
-            owner: address(bidWall),
-            tickLower: tickLower,
-            tickUpper: tickUpper,
-            salt: 'bidwall'
+            poolId: poolKey.toId(), owner: address(bidWall), tickLower: tickLower, tickUpper: tickUpper, salt: 'bidwall'
         });
 
         // BidWall should now have sufficient liquidity
         assertGt(liquidity, 0);
     }
 
-    function test_CanReceiveFullFairLaunchAmount(bool _flipped) external flipTokens(_flipped) {
-        // Provide the PoolManager with some ETH because otherwise it sulks about being poor
-        deal(address(WETH), address(poolManager), 1000e27 ether);
-
-        // Create our memecoin now that we have might have flipped.
-        address _memecoin = positionManager.flaunch(PositionManager.FlaunchParams('name', 'symbol', 'https://token.gg/', supplyShare(50), 30 minutes, 0, address(this), 50_00, 0, abi.encode(''), abi.encode(1_000)));
-        memecoin = MemecoinMock(_memecoin);
-        memecoinTreasury = flaunch.memecoinTreasury(flaunch.tokenId(_memecoin));
-
-        // Remint the tokens
-        memecoin.mint(alice, 100_000_000 ether);
-        deal(address(WETH), alice, 100_000_000 ether);
-
-        vm.startPrank(alice);
-        memecoin.approve(address(poolModifyPosition), type(uint).max);
-        memecoin.approve(address(poolSwap), type(uint).max);
-        WETH.approve(address(poolModifyPosition), type(uint).max);
-        WETH.approve(address(poolSwap), type(uint).max);
-        vm.stopPrank();
-
-        // Update our PoolKey to flip
-        poolKey = PoolKey({
-            currency0: Currency.wrap(_flipped ? address(memecoin) : address(WETH)),
-            currency1: Currency.wrap(_flipped ? address(WETH) : address(memecoin)),
-            fee: 0,
-            tickSpacing: TICK_SPACING,
-            hooks: IHooks(address(positionManager))
-        });
-
-        // Set a really high threshold so that our FairLaunch amount won't surpass it
-        bidWall = positionManager.bidWall();
-        bidWall.setSwapFeeThreshold(100 ether);
-
-        // Make some FairLaunch swaps
-        vm.startPrank(alice);
-        _swap(
-            IPoolManager.SwapParams({
-                zeroForOne: !_flipped,
-                amountSpecified: -1 ether,
-                sqrtPriceLimitX96: !_flipped ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1
-            })
-        );
-
-        // End FairLaunch with another swap
-        vm.warp(block.timestamp + 1 days);
-        _swap(
-            IPoolManager.SwapParams({
-                zeroForOne: !_flipped,
-                amountSpecified: -0.001 ether,
-                sqrtPriceLimitX96: !_flipped ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1
-            })
-        );
-
-        // So we haven't currently hit the threshold, so the BidWall should not be initialized
-        (, bool initialized, int24 tickLower, int24 tickUpper, uint pendingETHFees, uint cumulativeSwapFees) = bidWall.poolInfo(poolKey.toId());
-        assertEq(initialized, false, 'BidWall should not be initialized');
-
-        vm.stopPrank();
-
-        // Set a lower threshold, add a swap and then we should have the BidWall initialised
-        bidWall.setSwapFeeThreshold(1);
-
-        vm.startPrank(alice);
-        vm.warp(block.timestamp + 1 days);
-        _swap(
-            IPoolManager.SwapParams({
-                zeroForOne: !_flipped,
-                amountSpecified: -0.001 ether,
-                sqrtPriceLimitX96: !_flipped ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1
-            })
-        );
-
-        // Confirm that the BidWall holds ETH, even under threshold. It should initialize the
-        // BidWall, just below the current price
-        (, initialized, tickLower, tickUpper, pendingETHFees, cumulativeSwapFees) = bidWall.poolInfo(poolKey.toId());
-        assertEq(initialized, true, 'BidWall should be initialized');
-        assertEq(pendingETHFees, 0, 'Invalid pendingETHFees');
-        assertEq(cumulativeSwapFees, 0.00045 ether, 'Invalid cumulativeSwapFees');
-
-        (uint128 liquidity,,) = poolManager.getPositionInfo({
-            poolId: poolKey.toId(),
-            owner: address(bidWall),
-            tickLower: tickLower,
-            tickUpper: tickUpper,
-            salt: 'bidwall'
-        });
-
-        assertGt(liquidity, 0, 'Liquidity should be > 0');
-
-        vm.stopPrank();
-    }
-
-    function test_CanSetSwapFeeThresholdWithOwner(uint _newSwapFeeThreshold) public {
+    function test_CanSetSwapFeeThresholdWithOwner(
+        uint _newSwapFeeThreshold
+    ) public {
         vm.expectEmit();
-        emit BidWall.FixedSwapFeeThresholdUpdated(_newSwapFeeThreshold);
+        emit IBidWall.FixedSwapFeeThresholdUpdated(_newSwapFeeThreshold);
 
         bidWall.setSwapFeeThreshold(_newSwapFeeThreshold);
     }
 
-    function test_CannotSetSwapFeeThresholdWithoutOwner(address _caller, uint _newSwapFeeThreshold) public {
+    function test_CannotSetSwapFeeThresholdWithoutOwner(
+        address _caller,
+        uint _newSwapFeeThreshold
+    ) public {
         // Ensure the caller is not the owner
         vm.assume(_caller != address(this));
 
@@ -408,7 +415,6 @@ contract BidWallTest is FlaunchTest {
         // deal(address(WETH), address(poolManager), 1000e27 ether);
 
         // Skip the FairLaunch from taking place
-        _bypassFairLaunch();
 
         // Set a really high threshold so that our FairLaunch amount won't surpass it
         bidWall.setSwapFeeThreshold(100 ether);
@@ -416,14 +422,7 @@ contract BidWallTest is FlaunchTest {
         vm.startPrank(alice);
 
         // Perform a swap that builds fees
-        poolSwap.swap(
-            poolKey,
-            IPoolManager.SwapParams({
-                zeroForOne: false,
-                amountSpecified: -1 ether,
-                sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
-            })
-        );
+        poolSwap.swap(poolKey, SwapParams({zeroForOne: false, amountSpecified: -1 ether, sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1}));
 
         uint expectedFees = 0.002248410133947398 ether;
 
@@ -436,14 +435,7 @@ contract BidWallTest is FlaunchTest {
         vm.warp(block.timestamp + bidWall.staleTimeWindow());
 
         // Perform another swap that will trigger the stale liquidity to be added
-        poolSwap.swap(
-            poolKey,
-            IPoolManager.SwapParams({
-                zeroForOne: false,
-                amountSpecified: -1 ether,
-                sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
-            })
-        );
+        poolSwap.swap(poolKey, SwapParams({zeroForOne: false, amountSpecified: -1 ether, sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1}));
         vm.stopPrank();
 
         uint nextExpectedFees = 0.002245234892371601 ether;
@@ -494,7 +486,7 @@ contract BidWallTest is FlaunchTest {
         // Make a swap that sells some token into the BidWall position
         memecoin.approve(address(poolSwap), type(uint).max);
         _swap(
-            IPoolManager.SwapParams({
+            SwapParams({
                 zeroForOne: false,
                 amountSpecified: -0.0025 ether,
                 sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
@@ -530,11 +522,35 @@ contract BidWallTest is FlaunchTest {
 
     // Helpers
 
-    function _swap(IPoolManager.SwapParams memory swapParams) internal returns (BalanceDelta delta) {
-        delta = poolSwap.swap(
-            poolKey,
-            swapParams
-        );
+    function _swap(
+        SwapParams memory swapParams
+    ) internal returns (BalanceDelta delta) {
+        delta = poolSwap.swap(poolKey, swapParams);
+    }
+
+    function _assertBidWallDepositLogged(
+        PoolId _poolId,
+        uint _ethIn,
+        uint _ethTotal
+    ) internal {
+        // Tolerance absorbs the small deposit variance between currency0/currency1
+        // orderings; the headline ~0.009 ether deposit is what we care about.
+        uint tolerance = 0.0001 ether;
+        bytes32 sig = IBidWall.BidWallDeposit.selector;
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint i; i < logs.length; ++i) {
+            if (logs[i].emitter != address(bidWall) || logs[i].topics[0] != sig) {
+                continue;
+            }
+            if (logs[i].topics[1] != PoolId.unwrap(_poolId)) {
+                continue;
+            }
+            (uint loggedIn, uint loggedTotal) = abi.decode(logs[i].data, (uint, uint));
+            assertApproxEqAbs(loggedIn, _ethIn, tolerance, 'BidWallDeposit ethIn mismatch');
+            assertApproxEqAbs(loggedTotal, _ethTotal, tolerance, 'BidWallDeposit ethTotal mismatch');
+            return;
+        }
+        revert('BidWallDeposit not emitted');
     }
 
     modifier poolHasLiquidity() {
@@ -544,7 +560,7 @@ contract BidWallTest is FlaunchTest {
         vm.startPrank(alice);
         poolModifyPosition.modifyLiquidity(
             poolKey,
-            IPoolManager.ModifyLiquidityParams({
+            ModifyLiquidityParams({
                 tickLower: TickMath.minUsableTick(TICK_SPACING),
                 tickUpper: TickMath.maxUsableTick(TICK_SPACING),
                 liquidityDelta: 1000 ether,
@@ -556,5 +572,4 @@ contract BidWallTest is FlaunchTest {
 
         _;
     }
-
 }

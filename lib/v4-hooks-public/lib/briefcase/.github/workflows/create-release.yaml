@@ -1,0 +1,166 @@
+name: Create Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "deployments/**"
+jobs:
+  create-release:
+    permissions:
+      contents: write
+      id-token: write
+    runs-on:
+      group: npm-deploy
+    environment:
+      name: release
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Incrementing the version in package.json allows us to bump the major or minor version by bumping the version in the package.json file to X.X.-1
+      - name: Get latest tag from package.json
+        id: latest_tag_package_json
+        run: echo "LATEST_TAG=v$(jq -r '.version' package.json)" >> $GITHUB_OUTPUT
+
+      # Use latest tag from github tag history to generate the changelog
+      - name: Get latest tag from tag history
+        id: latest_tag
+        run: echo "LATEST_TAG=$(git describe --tags --abbrev=0 || echo v0.0.0)" >> $GITHUB_OUTPUT
+
+      - name: Increment version
+        id: increment_version
+        run: |
+          if [[ -z "${LATEST_TAG}" || "${LATEST_TAG}" == "v0.0.0" ]]; then
+            echo "NEW_VERSION=v0.0.1" >> $GITHUB_OUTPUT
+          else
+            latest_version=${LATEST_TAG#v}
+            IFS='.' read -ra version_parts <<< "$latest_version"
+            version_parts[2]=$((version_parts[2] + 1))
+            new_version="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}"
+            echo "NEW_VERSION=v$new_version" >> $GITHUB_OUTPUT
+          fi
+        env:
+          LATEST_TAG: ${{ steps.latest_tag_package_json.outputs.LATEST_TAG }}
+
+      - name: Update package.json version
+        run: |
+          new_version=${{ steps.increment_version.outputs.NEW_VERSION }}
+          jq --arg new_version "${new_version#v}" '.version = $new_version' package.json > package.json.tmp && mv package.json.tmp package.json
+        env:
+          NEW_VERSION: ${{ steps.increment_version.outputs.NEW_VERSION }}
+
+      - name: Generate changelog
+        id: generate_changelog
+        run: |
+          echo "Debug: Latest tag is ${{ steps.latest_tag.outputs.LATEST_TAG }}"
+
+          changelog=""
+          if [[ "${{ steps.latest_tag.outputs.LATEST_TAG }}" == "v0.0.0" ]]; then
+            echo "Debug: No previous tag found, getting all changes in src directory"
+            git diff --name-status $(git hash-object -t tree /dev/null)
+            
+            while IFS= read -r line; do
+              status=$(echo $line | cut -d' ' -f1)
+              file=$(echo $line | cut -d' ' -f2-)
+              echo "Debug: Processing file: $file with status: $status"
+              if [[ $file == *src/* || $file == *deployments/* ]]; then
+                case $status in
+                  A) action="Added";;
+                  M) action="Modified";;
+                  D) action="Deleted";;
+                  *) action="Changed";;
+                esac
+                changelog+="- $action [$file](https://github.com/${{ github.repository }}/commit/${{ github.sha }}#diff-$(echo -n $file | sha256sum | cut -d' ' -f1))"$'\n'
+                echo "Debug: Added to changelog: $action $file"
+              else
+                echo "Debug: Skipped file (not in src/ or deployments/): $file"
+              fi
+            done < <(git diff --name-status $(git hash-object -t tree /dev/null))
+          else
+            echo "Debug: Previous tag found, getting changes since ${{ steps.latest_tag.outputs.LATEST_TAG }}"
+            git diff --name-status ${{ steps.latest_tag.outputs.LATEST_TAG }}
+            while IFS= read -r line; do
+              status=$(echo $line | cut -d' ' -f1)
+              file=$(echo $line | cut -d' ' -f2-)
+              echo "Debug: Processing file: $file with status: $status"
+              if [[ $file == *src/* || $file == *deployments/* ]]; then
+                case $status in
+                  A) action="Added";;
+                  M) action="Modified";;
+                  D) action="Deleted";;
+                  *) action="Changed";;
+                esac
+                changelog+="- $action [$file](https://github.com/${{ github.repository }}/commit/${{ github.sha }}#diff-$(echo -n $file | sha256sum | cut -d' ' -f1))"$'\n'
+                echo "Debug: Added to changelog: $action $file"
+              else
+                echo "Debug: Skipped file (not in src/ or deployments/): $file"
+              fi
+            done < <(git diff --name-status ${{ steps.latest_tag.outputs.LATEST_TAG }})
+          fi
+
+          echo "Debug: Final changelog:"
+          echo "$changelog"
+
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          echo "$changelog" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          if [ -z "$changelog" ]; then
+            echo "Error: Changelog is empty"
+            exit 1
+          else
+            echo "Success: Changelog generated"
+          fi
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+
+      - name: Commit updated package.json
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git remote set-url origin git@github.com:${{ github.repository }}.git
+          git add package.json
+          git commit -m "Release ${{ steps.increment_version.outputs.NEW_VERSION }}"
+          git push
+
+      - name: Create Release
+        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.increment_version.outputs.NEW_VERSION }}
+          name: Release ${{ steps.increment_version.outputs.NEW_VERSION }}
+          body: |
+            Changes:
+            ${{ steps.generate_changelog.outputs.CHANGELOG }}
+          draft: false
+          prerelease: false
+
+      - name: Load npm secret
+        uses: 1password/load-secrets-action@581a835fb51b8e7ec56b71cf2ffddd7e68bb25e0
+        with:
+          # Export loaded secrets as environment variables
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          # You may need to change this to your vault name and secret name
+          # Refer to it by calling env.NPM_TOKEN
+          # This token is also limited by IP to ONLY work on the runner
+          NPM_TOKEN: op://npm-deploy/npm-runner-token/secret
+
+      - name: Publish package to npm
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          registry-url: "https://registry.npmjs.org"
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}

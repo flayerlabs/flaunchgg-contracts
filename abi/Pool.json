@@ -1,0 +1,100 @@
+{
+  "abi": [
+    {
+      "type": "error",
+      "name": "InvalidFeeForExactOut",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NoLiquidityToReceiveFees",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PoolAlreadyInitialized",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PoolNotInitialized",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PriceLimitAlreadyExceeded",
+      "inputs": [
+        {
+          "name": "sqrtPriceCurrentX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "sqrtPriceLimitX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "PriceLimitOutOfBounds",
+      "inputs": [
+        {
+          "name": "sqrtPriceLimitX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "TickLiquidityOverflow",
+      "inputs": [
+        {
+          "name": "tick",
+          "type": "int24",
+          "internalType": "int24"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "TickLowerOutOfBounds",
+      "inputs": [
+        {
+          "name": "tickLower",
+          "type": "int24",
+          "internalType": "int24"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "TickUpperOutOfBounds",
+      "inputs": [
+        {
+          "name": "tickUpper",
+          "type": "int24",
+          "internalType": "int24"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "TicksMisordered",
+      "inputs": [
+        {
+          "name": "tickLower",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "tickUpper",
+          "type": "int24",
+          "internalType": "int24"
+        }
+      ]
+    }
+  ]
+}

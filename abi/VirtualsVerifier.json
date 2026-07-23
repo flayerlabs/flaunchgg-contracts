@@ -207,6 +207,11 @@
     },
     {
       "type": "error",
+      "name": "NotAContract",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "Unauthorized",
       "inputs": []
     },

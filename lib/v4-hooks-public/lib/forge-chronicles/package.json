@@ -1,0 +1,8 @@
+{
+    "name": "forge-chronicles",
+    "version": "0.2.0",
+    "description": "Extracts contract deployment data from run-latest.json (foundry broadcast output) and writes to deployments/json/{chainId}.json & deployments/{chainId}.md",
+    "main": "index.js",
+    "author": "Polygon Labs",
+    "license": "(Apache-2.0 OR MIT)"
+}

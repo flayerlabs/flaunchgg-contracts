@@ -3,7 +3,7 @@ src = "src"
 out = "out"
 libs = ["lib"]
 optimizer = true
-optimizer_runs = 0
+optimizer_runs = 777
 evm_version = "cancun"
 block_gas_limit = 30000000000
 allow_internal_expect_revert = true
@@ -11,24 +11,36 @@ solc_version="0.8.26"
 
 fs_permissions = [{ access = "read", path = "./script/offchain/output/" }]
 
+# Salt for CREATE2-deployed linked libraries (FlaunchLibrary) in scripts. Forge SKIPS a library
+# deploy when code already exists at its deterministic address, which silently breaks cross-chain
+# nonce/address parity (see FreshChain.s.sol). v4 = keccak256('flaunch.FlaunchLibrary.v4'): the
+# salt-0/v2/v3 addresses were consumed on Unichain by the aborted 2026-07-17 FreshChain
+# broadcasts (bump again if another partial broadcast lands the library).
+create2_library_salt = "0xe155bcd0de3246791c14957cd58149a034db6f628ac21dd156c756ebfd34f505"
 
 # 6321: Unnamed return variable can remain unassigned. Add an explicit return with value to all non-reverting code paths or name the variable.
 ignored_error_codes = [3860, 5574, 5667, 6321, 9302]
 
 [etherscan]
-base = { key = "${ETHERSCAN_API_KEY}", url = "https://api.basescan.org/api" }
-base-sepolia = { key = "${BASE_SEPOLIA_ETHERSCAN_API_KEY}", url = "https://api-sepolia.basescan.org/api" }
+base = { key = "${ETHERSCAN_API_KEY}", url = "https://api.etherscan.io/v2/api?chainid=8453" }
+base-sepolia = { key = "${BASE_SEPOLIA_ETHERSCAN_API_KEY}", url = "https://api.etherscan.io/v2/api?chainid=84532" }
+mainnet = { key = "${ETHERSCAN_API_KEY}", url = "https://api.etherscan.io/v2/api?chainid=1" }
+unichain = { key = "${ETHERSCAN_API_KEY}", url = "https://api.etherscan.io/v2/api?chainid=130" }
+# Robinhood Chain (4663) verifies via Blockscout, not Etherscan — pass on the CLI instead:
+# --verifier blockscout --verifier-url https://robinhoodchain.blockscout.com/api
 
 [rpc_endpoints]
 base = "${BASE_RPC_URL}"
 base_sepolia = "${BASE_SEPOLIA_RPC_URL}"
 mainnet = "${MAINNET_RPC_URL}"
+unichain = "${UNICHAIN_RPC_URL}"
+robinhood = "${ROBINHOOD_RPC_URL}"    # public: https://rpc.mainnet.chain.robinhood.com
 
 [fmt]
 single_line_statement_blocks = "multi"
 multiline_func_header = "params_first"
 sort_imports = true
-line_length = 120
+line_length = 140
 tab_width = 4
 int_types = "short"
 quote_style = "single"

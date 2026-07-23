@@ -1,0 +1,27 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "ADDRESS_ZERO",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "Currency"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "error",
+      "name": "ERC20TransferFailed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NativeTransferFailed",
+      "inputs": []
+    }
+  ]
+}

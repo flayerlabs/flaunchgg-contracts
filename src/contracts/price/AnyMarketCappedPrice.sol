@@ -9,7 +9,7 @@ import {MarketCappedPrice} from '@flaunch/price/MarketCappedPrice.sol';
  * This contract defines an initial flaunch price by finding the ETH equivalent price of
  * a USDC value. This is done by checking the an ETH:USDC pool to find an ETH price of an
  * Owner defined USDC price.
- * 
+ *
  * Supports external memecoins with varying total supply.
  *
  * This ETH equivalent price is then cast against the memecoin supply to determine market
@@ -37,19 +37,13 @@ contract AnyMarketCappedPrice is MarketCappedPrice {
      * @param _usdcToken The USDC token used in the Pool
      * @param _flaunchFeeExemption The {FlaunchFeeExemption} contract address
      */
-    constructor (
+    constructor(
         address _protocolOwner,
         address _poolManager,
         address _ethToken,
         address _usdcToken,
         address _flaunchFeeExemption
-    ) MarketCappedPrice(
-        _protocolOwner,
-        _poolManager,
-        _ethToken,
-        _usdcToken,
-        _flaunchFeeExemption
-    ) {}
+    ) MarketCappedPrice(_protocolOwner, _poolManager, _ethToken, _usdcToken, _flaunchFeeExemption) {}
 
     /**
      * Retrieves the stored `_initialSqrtPriceX96` value and provides the flipped or unflipped
@@ -60,7 +54,12 @@ contract AnyMarketCappedPrice is MarketCappedPrice {
      *
      * @return sqrtPriceX96_ The `sqrtPriceX96` value
      */
-    function getSqrtPriceX96(address /* _sender */, bool _flipped, bytes calldata _initialPriceParams) public view override returns (uint160 sqrtPriceX96_) {
+    function getSqrtPriceX96(
+        address,
+        /* _sender */
+        bool _flipped,
+        bytes calldata _initialPriceParams
+    ) public view override returns (uint160 sqrtPriceX96_) {
         (AnyMarketCappedPriceParams memory params) = abi.decode(_initialPriceParams, (AnyMarketCappedPriceParams));
 
         uint totalSupply = IERC20(params.memecoin).totalSupply();

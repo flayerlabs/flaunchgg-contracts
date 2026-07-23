@@ -3,33 +3,26 @@ pragma solidity ^0.8.26;
 
 import {Initializable} from '@solady/utils/Initializable.sol';
 import {ReentrancyGuard} from '@solady/utils/ReentrancyGuard.sol';
-
-import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {SafeTransferLib} from '@solady/utils/SafeTransferLib.sol';
 
 import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
 import {PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
 
-import {MemecoinFinder} from '@flaunch/types/MemecoinFinder.sol';
 import {PositionManager} from '@flaunch/PositionManager.sol';
 import {TreasuryActionManager} from '@flaunch/treasury/ActionManager.sol';
+import {MemecoinFinder} from '@flaunch/types/MemecoinFinder.sol';
 
+import {IMemecoinTreasury} from '@flaunch-interfaces/IMemecoinTreasury.sol';
 import {ITreasuryAction} from '@flaunch-interfaces/ITreasuryAction.sol';
-
 
 /**
  * Allows approved actions to be executed by the `PoolCreator` for their specific pool, using
  * tokens in their {MemecoinTreasury}.
  */
-contract MemecoinTreasury is Initializable, ReentrancyGuard {
-
+contract MemecoinTreasury is IMemecoinTreasury, Initializable, ReentrancyGuard {
     using MemecoinFinder for PoolKey;
     using PoolIdLibrary for PoolKey;
-
-    error ActionNotApproved();
-    error Unauthorized();
-
-    event ActionExecuted(address indexed _action, PoolKey _poolKey, bytes _data);
 
     /// The native token used by the Flaunch {PositionManager}
     address public nativeToken;
@@ -50,7 +43,12 @@ contract MemecoinTreasury is Initializable, ReentrancyGuard {
      * @param _nativeToken The native token address used by Flaunch
      * @param _poolKey The pool that is being actioned against
      */
-    function initialize(address payable _positionManager, address _actionManager, address _nativeToken, PoolKey memory _poolKey) public initializer {
+    function initialize(
+        address payable _positionManager,
+        address _actionManager,
+        address _nativeToken,
+        PoolKey memory _poolKey
+    ) public initializer {
         actionManager = TreasuryActionManager(_actionManager);
         nativeToken = _nativeToken;
         poolKey = _poolKey;
@@ -65,20 +63,29 @@ contract MemecoinTreasury is Initializable, ReentrancyGuard {
      * @param _action The {ITreasuryAction} address to execute
      * @param _data Additional data that the {ITreasuryAction} may require
      */
-    function executeAction(address _action, bytes memory _data) public nonReentrant {
+    function executeAction(
+        address _action,
+        bytes memory _data
+    ) public nonReentrant {
         // Ensure the action is approved
-        if (!actionManager.approvedActions(_action)) revert ActionNotApproved();
+        if (!actionManager.approvedActions(_action)) {
+            revert ActionNotApproved();
+        }
 
         // Make sure the caller is the owner of the corresponding ERC721
-        address poolCreator = poolKey.memecoin(nativeToken).creator();
-        if (poolCreator != msg.sender) revert Unauthorized();
+        address poolCreator = _resolveCreator();
+        if (poolCreator != msg.sender) {
+            revert Unauthorized();
+        }
 
-        IERC20 token0 = IERC20(Currency.unwrap(poolKey.currency0));
-        IERC20 token1 = IERC20(Currency.unwrap(poolKey.currency1));
+        address token0 = Currency.unwrap(poolKey.currency0);
+        address token1 = Currency.unwrap(poolKey.currency1);
 
-        // Approve all tokens to be used before execution
-        token0.approve(_action, type(uint).max);
-        token1.approve(_action, type(uint).max);
+        // Approve all tokens to be used before execution. We use `safeApproveWithRetry` as one of
+        // the currencies may be an imported ERC20 with a non-standard `approve` (missing return
+        // value, or requiring a reset-to-zero before re-approving).
+        SafeTransferLib.safeApproveWithRetry(token0, _action, type(uint).max);
+        SafeTransferLib.safeApproveWithRetry(token1, _action, type(uint).max);
 
         // Claim fees before executing, keeping as fleth to ensure full treasury balances
         claimFees();
@@ -88,8 +95,20 @@ contract MemecoinTreasury is Initializable, ReentrancyGuard {
         emit ActionExecuted(_action, poolKey, _data);
 
         // Unapprove all tokens after execution
-        token0.approve(_action, 0);
-        token1.approve(_action, 0);
+        SafeTransferLib.safeApprove(token0, _action, 0);
+        SafeTransferLib.safeApprove(token1, _action, 0);
+    }
+
+    /**
+     * Resolves the creator (owner of the corresponding ERC721) that is authorized to execute
+     * actions against this treasury. The native {MemecoinTreasury} resolves this directly from
+     * the memecoin's `creator()`; the {AnyMemecoinTreasury} overrides this to resolve through
+     * the Any manager, as an imported ERC20 may not implement `creator()`.
+     *
+     * @return The address authorized to execute actions on this treasury
+     */
+    function _resolveCreator() internal view virtual returns (address) {
+        return poolKey.memecoin(nativeToken).creator();
     }
 
     /**
@@ -105,6 +124,5 @@ contract MemecoinTreasury is Initializable, ReentrancyGuard {
     /**
      * Allows the contract to receive ETH when withdrawn from the flETH token.
      */
-    receive () external payable {}
-
+    receive() external payable {}
 }

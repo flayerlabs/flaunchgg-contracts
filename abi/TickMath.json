@@ -1,0 +1,26 @@
+{
+  "abi": [
+    {
+      "type": "error",
+      "name": "InvalidSqrtPrice",
+      "inputs": [
+        {
+          "name": "sqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidTick",
+      "inputs": [
+        {
+          "name": "tick",
+          "type": "int24",
+          "internalType": "int24"
+        }
+      ]
+    }
+  ]
+}

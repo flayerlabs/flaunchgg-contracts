@@ -1,0 +1,20 @@
+{
+  "lib/briefcase": {
+    "rev": "2b00819e5694c075a5437a9a0cde109fac0e6578"
+  },
+  "lib/forge-chronicles": {
+    "rev": "d1fb566915f23a01f08747264c56f8925f15751a"
+  },
+  "lib/forge-std": {
+    "rev": "60acb7aaadcce2d68e52986a0a66fe79f07d138f"
+  },
+  "lib/v4-core": {
+    "tag": {
+      "name": "v4.0.0",
+      "rev": "e50237c43811bd9b526eff40f26772152a42daba"
+    }
+  },
+  "lib/v4-periphery": {
+    "rev": "3779387e5d296f39df543d23524b050f89a62917"
+  }
+}

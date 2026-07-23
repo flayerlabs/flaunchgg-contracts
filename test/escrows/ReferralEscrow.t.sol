@@ -1,22 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
-import {IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
 import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
+import {IHooks} from '@uniswap/v4-core/src/libraries/Hooks.sol';
+import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {Currency} from '@uniswap/v4-core/src/types/Currency.sol';
 import {PoolId} from '@uniswap/v4-core/src/types/PoolId.sol';
 import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
-import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {SwapParams} from '@uniswap/v4-core/src/types/PoolOperation.sol';
 
 import {PositionManager} from '@flaunch/PositionManager.sol';
 import {ReferralEscrow} from '@flaunch/escrows/ReferralEscrow.sol';
 
-import {ERC20Mock} from '../tokens/ERC20Mock.sol';
 import {FlaunchTest} from '../FlaunchTest.sol';
-
+import {ERC20Mock} from '../tokens/ERC20Mock.sol';
+import {IPositionManager} from '@flaunch-interfaces/IPositionManager.sol';
+import {IReferralEscrow} from '@flaunch-interfaces/IReferralEscrow.sol';
 
 contract ReferralEscrowTest is FlaunchTest {
-
     address owner = address(this);
     address nonOwner = address(0x123);
 
@@ -64,7 +65,7 @@ contract ReferralEscrowTest is FlaunchTest {
 
         // Expect TokensAssigned event to be emitted
         vm.expectEmit();
-        emit ReferralEscrow.TokensAssigned(POOL_ID, user1, address(token1), amount);
+        emit IReferralEscrow.TokensAssigned(POOL_ID, user1, address(token1), amount);
 
         vm.prank(address(positionManager));
         referralEscrow.assignTokens(POOL_ID, user1, address(token1), amount);
@@ -82,7 +83,7 @@ contract ReferralEscrowTest is FlaunchTest {
 
         // Expect TokensClaimed event to be emitted
         vm.expectEmit();
-        emit ReferralEscrow.TokensClaimed(user1, user1, address(token1), amount);
+        emit IReferralEscrow.TokensClaimed(user1, user1, address(token1), amount);
 
         _claimSingleToken(token1, user1);
         vm.stopPrank();
@@ -90,7 +91,11 @@ contract ReferralEscrowTest is FlaunchTest {
 
     // --- Assign Tokens ---
 
-    function test_CanAssignTokens(address _recipient, uint128 _amount1, uint128 _amount2) public {
+    function test_CanAssignTokens(
+        address _recipient,
+        uint128 _amount1,
+        uint128 _amount2
+    ) public {
         vm.startPrank(address(positionManager));
         referralEscrow.assignTokens(POOL_ID, _recipient, address(token1), _amount1);
 
@@ -107,13 +112,15 @@ contract ReferralEscrowTest is FlaunchTest {
     }
 
     function test_CannotAssignTokensAsNonPositionManager() public {
-        vm.expectRevert(ReferralEscrow.NotPositionManager.selector);
+        vm.expectRevert(IReferralEscrow.NotPositionManager.selector);
         referralEscrow.assignTokens(POOL_ID, user1, address(token1), 1 ether);
     }
 
     // --- Fuzz Testing: One Token Claims ---
 
-    function test_Fuzz_CanClaimSingleToken(uint amount) public {
+    function test_Fuzz_CanClaimSingleToken(
+        uint amount
+    ) public {
         vm.assume(amount > 0 && amount < 1e18); // Limit to reasonable range
 
         // Assign token and claim it
@@ -158,7 +165,10 @@ contract ReferralEscrowTest is FlaunchTest {
 
     // --- Fuzz Testing: Multiple Token Claims ---
 
-    function test_Fuzz_CanClaimMultipleTokens(uint224 amount1, uint224 amount2) public {
+    function test_Fuzz_CanClaimMultipleTokens(
+        uint224 amount1,
+        uint224 amount2
+    ) public {
         vm.assume(amount1 > 0 && amount2 > 0);
 
         deal(address(token1), address(referralEscrow), amount1);
@@ -212,7 +222,10 @@ contract ReferralEscrowTest is FlaunchTest {
         vm.stopPrank();
     }
 
-    function test_CanClaimForAnotherRecipient(uint224 amount1, uint224 amount2) public {
+    function test_CanClaimForAnotherRecipient(
+        uint224 amount1,
+        uint224 amount2
+    ) public {
         vm.assume(amount1 > 0 && amount2 > 0);
 
         deal(address(token1), address(referralEscrow), amount1);
@@ -238,14 +251,14 @@ contract ReferralEscrowTest is FlaunchTest {
         vm.stopPrank();
     }
 
-    function _flaunchMock(string memory _name) internal returns (address) {
+    function _flaunchMock(
+        string memory _name
+    ) internal returns (address) {
         return positionManager.flaunch(
-            PositionManager.FlaunchParams({
+            IPositionManager.FlaunchParams({
                 name: _name,
                 symbol: _name,
                 tokenUri: '',
-                initialTokenFairLaunch: supplyShare(50),
-                fairLaunchDuration: 30 minutes,
                 premineAmount: 0,
                 creator: address(this),
                 creatorFeeAllocation: 10_00,
@@ -256,13 +269,20 @@ contract ReferralEscrowTest is FlaunchTest {
         );
     }
 
-    function _claimSingleToken(ERC20Mock _token, address payable _recipient) internal {
+    function _claimSingleToken(
+        ERC20Mock _token,
+        address payable _recipient
+    ) internal {
         address[] memory tokens = new address[](1);
         tokens[0] = address(_token);
         referralEscrow.claimTokens(tokens, _recipient);
     }
 
-    function _claimMultipleTokens(ERC20Mock _token1, ERC20Mock _token2, address payable _recipient) internal {
+    function _claimMultipleTokens(
+        ERC20Mock _token1,
+        ERC20Mock _token2,
+        address payable _recipient
+    ) internal {
         address[] memory tokens = new address[](2);
         tokens[0] = address(_token1);
         tokens[1] = address(_token2);
@@ -270,7 +290,9 @@ contract ReferralEscrowTest is FlaunchTest {
         referralEscrow.claimTokens(tokens, _recipient);
     }
 
-    function _createEthPosition(address _token) internal {
+    function _createEthPosition(
+        address _token
+    ) internal {
         uint amount = 1 ether;
 
         deal(address(this), amount);
@@ -287,12 +309,11 @@ contract ReferralEscrowTest is FlaunchTest {
                 hooks: IHooks(positionManager),
                 tickSpacing: 60
             }),
-            IPoolManager.SwapParams({
+            SwapParams({
                 zeroForOne: !flipped,
                 amountSpecified: -int(amount),
                 sqrtPriceLimitX96: !flipped ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1
             })
         );
     }
-
 }

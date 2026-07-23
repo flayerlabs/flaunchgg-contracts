@@ -1,49 +1,65 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {Currency, CurrencyLibrary} from '@uniswap/v4-core/src/types/Currency.sol';
+import {AccessControl} from '@openzeppelin/contracts/access/AccessControl.sol';
+
 import {IPoolManager} from '@uniswap/v4-core/src/interfaces/IPoolManager.sol';
-import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
-import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
+import {FullMath} from '@uniswap/v4-core/src/libraries/FullMath.sol';
 import {StateLibrary} from '@uniswap/v4-core/src/libraries/StateLibrary.sol';
 import {SwapMath} from '@uniswap/v4-core/src/libraries/SwapMath.sol';
 import {TickMath} from '@uniswap/v4-core/src/libraries/TickMath.sol';
+import {PoolId, PoolIdLibrary} from '@uniswap/v4-core/src/types/PoolId.sol';
+import {PoolKey} from '@uniswap/v4-core/src/types/PoolKey.sol';
+import {SwapParams} from '@uniswap/v4-core/src/types/PoolOperation.sol';
 
-import {CurrencySettler} from '@flaunch/libraries/CurrencySettler.sol';
+import {ProtocolRoles} from '@flaunch/libraries/ProtocolRoles.sol';
 
+import {IInternalSwapPool} from '@flaunch-interfaces/IInternalSwapPool.sol';
+import {IOracle} from '@flaunch-interfaces/IOracle.sol';
 
 /**
- * This frontruns Uniswap to sell undesired token amounts from our fees into desired tokens
- * ahead of our fee distribution. This acts as a partial orderbook to remove impact against
- * our pool.
+ * Frontruns Uniswap to sell undesired token amounts from protocol fees into desired tokens ahead
+ * of fee distribution, acting as a partial orderbook that removes impact against the pool.
+ *
+ * The authorised hooks hold the `POSITION_MANAGER` role; they call {internalSwap} / {depositFees} /
+ * {recordObservation} and perform the actual {PoolManager} `take`/`settle` themselves, since those
+ * must be attributed to the hook (the swap delta owner).
+ *
+ * @dev The internal fill prices the protocol's fee inventory against a manipulation-resistant TWAP
+ * (see {Oracle}) rather than the live spot price, so the conversion cannot be drained by atomic
+ * spot-price manipulation within the swapper's own transaction.
  */
-abstract contract InternalSwapPool {
-
-    using CurrencyLibrary for Currency;
-    using CurrencySettler for Currency;
+contract InternalSwapPool is IInternalSwapPool, AccessControl {
     using PoolIdLibrary for PoolKey;
     using StateLibrary for IPoolManager;
 
-    /// Emitted when a pool has been allocated fees on either side of the position
-    event PoolFeesReceived(PoolId indexed _poolId, uint _amount0, uint _amount1);
+    /// The Uniswap V4 {PoolManager} the hooks operate against
+    IPoolManager public immutable poolManager;
 
-    /// Emitted when a pool fees have been distributed to stakers
-    event PoolFeesDistributed(PoolId indexed _poolId, uint _donateAmount, uint _creatorAmount, uint _bidWallAmount, uint _governanceAmount, uint _protocolAmount);
+    /// The price {Oracle} used to price internal fills
+    IOracle public immutable oracle;
 
-    /// Emitted when pool fees have been internally swapped
-    event PoolFeesSwapped(PoolId indexed _poolId, bool zeroForOne, uint _amount0, uint _amount1);
+    /// Maps the amount of claimable tokens that are available to be `distributed` for a `PoolId`
+    mapping(PoolId _poolId => ClaimableFees _fees) internal _poolFees;
 
     /**
-     * Contains amounts for both the currency0 and currency1 values of a UV4 Pool.
+     * Stores the {PoolManager} and {Oracle} references and grants the deployer admin control so it
+     * can authorise the consuming hooks.
+     *
+     * @param _poolManager The Uniswap V4 {PoolManager}
+     * @param _oracle The price {Oracle} contract
+     * @param _admin The address granted `DEFAULT_ADMIN_ROLE`
      */
-    struct ClaimableFees {
-        uint amount0;
-        uint amount1;
-    }
+    constructor(
+        IPoolManager _poolManager,
+        IOracle _oracle,
+        address _admin
+    ) {
+        poolManager = _poolManager;
+        oracle = _oracle;
 
-    /// Maps the amount of claimable tokens that are available to be `distributed`
-    /// for a `PoolId`.
-    mapping (PoolId _poolId => ClaimableFees _fees) internal _poolFees;
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+    }
 
     /**
      * Provides the {ClaimableFees} for a pool key.
@@ -52,39 +68,56 @@ abstract contract InternalSwapPool {
      *
      * @return The {ClaimableFees} for the PoolKey
      */
-    function poolFees(PoolKey memory _poolKey) public view returns (ClaimableFees memory) {
+    function poolFees(
+        PoolKey memory _poolKey
+    ) public view returns (ClaimableFees memory) {
         return _poolFees[_poolKey.toId()];
     }
 
     /**
-     * Allows for fees to be deposited against a pool to be distributed.
+     * Allows an authorised hook to allocate fees against a pool.
      *
-     * @dev Our `amount0` must always refer to the amount of the native token provided. The
-     * `amount1` will always be the underlying {Memecoin}. The internal logic of
-     * this function will rearrange them to match the `PoolKey` if needed.
+     * @dev `_amount0` always refers to the native token, `_amount1` the underlying memecoin.
      *
      * @param _poolKey The PoolKey to deposit against
      * @param _amount0 The amount of eth equivalent to deposit
      * @param _amount1 The amount of underlying token to deposit
      */
-    function _depositFees(PoolKey memory _poolKey, uint _amount0, uint _amount1) internal {
-        PoolId _poolId = _poolKey.toId();
+    function depositFees(
+        PoolKey memory _poolKey,
+        uint _amount0,
+        uint _amount1
+    ) external onlyRole(ProtocolRoles.POSITION_MANAGER) {
+        PoolId poolId = _poolKey.toId();
 
-        _poolFees[_poolId].amount0 += _amount0;
-        _poolFees[_poolId].amount1 += _amount1;
+        _poolFees[poolId].amount0 += _amount0;
+        _poolFees[poolId].amount1 += _amount1;
 
-        emit PoolFeesReceived(_poolId, _amount0, _amount1);
+        emit PoolFeesReceived(poolId, _amount0, _amount1);
     }
 
     /**
-     * Check if we have any token1 fee tokens that we can use to fill the swap before it hits
-     * the Uniswap pool. This prevents the pool from being affected and reduced gas costs.
+     * Clears and returns the native-token fees accumulated for a pool, ready for the calling hook
+     * to distribute.
      *
-     * This frontruns UniSwap to sell undesired token amounts from our fees into desired tokens
-     * ahead of our fee distribution. This acts as a partial orderbook to remove impact against
-     * our pool.
+     * @param _poolId The pool to consume native fees for
      *
-     * @param _poolManager The Uniswap V4 {PoolManager} contract
+     * @return amount0_ The native-token fee amount that was cleared
+     */
+    function resetNativeFees(
+        PoolId _poolId
+    ) external onlyRole(ProtocolRoles.POSITION_MANAGER) returns (uint amount0_) {
+        amount0_ = _poolFees[_poolId].amount0;
+        _poolFees[_poolId].amount0 = 0;
+    }
+
+    /**
+     * Computes the internal fill against the protocol's fee inventory and updates the stored fees.
+     *
+     * @dev This does NOT touch the {PoolManager}: the caller (an authorised hook holding the swap
+     * delta) performs the corresponding `take` (native, `ethIn_`) and `settle` (memecoin,
+     * `tokenOut_`). The fill is priced against the manipulation-resistant TWAP, never spot.
+     *
      * @param _key The PoolKey that is being swapped against
      * @param _params The swap parameters
      * @param _nativeIsZero If our native token is `currency0`
@@ -92,16 +125,16 @@ abstract contract InternalSwapPool {
      * @return ethIn_ The ETH taken for the swap
      * @return tokenOut_ The tokens given for the swap
      */
-    function _internalSwap(
-        IPoolManager _poolManager,
+    function internalSwap(
         PoolKey calldata _key,
-        IPoolManager.SwapParams memory _params,
+        SwapParams memory _params,
         bool _nativeIsZero
-    ) internal returns (
-        uint ethIn_,
-        uint tokenOut_
-    ) {
+    ) external onlyRole(ProtocolRoles.POSITION_MANAGER) returns (uint ethIn_, uint tokenOut_) {
         PoolId poolId = _key.toId();
+
+        // Read the current pool tick up front. The internal fill settles against the hook's own
+        // balances and never moves the pool, so this is the genuine pre-swap tick for the block.
+        (, int24 currentTick,,) = poolManager.getSlot0(poolId);
 
         // Load our PoolFees as storage as we will manipulate them later if we trigger
         ClaimableFees storage pendingPoolFees = _poolFees[poolId];
@@ -115,23 +148,42 @@ abstract contract InternalSwapPool {
             return (ethIn_, tokenOut_);
         }
 
-        // Get the current price for our pool
-        (uint160 sqrtPriceX96,,,) = _poolManager.getSlot0(poolId);
+        // Defense-in-depth: if the oracle has never recorded an observation for this pool then
+        // `twapTick` falls back to the caller-supplied spot tick, which is manipulable within the
+        // swapper's own transaction. Rather than pricing the fill at spot, degrade to a no-fill so
+        // any consumer that has not seeded the oracle simply lets the outer pool swap absorb the
+        // full user input. Correctly-seeded pools always have a non-zero cardinality and are
+        // unaffected.
+        if (oracle.observationState(poolId).cardinality == 0) {
+            return (0, 0);
+        }
+
+        // Price the protocol's fee inventory against the manipulation-resistant TWAP rather than
+        // the live spot price (see security finding H-4). This prevents an attacker from atomically
+        // moving spot to buy the inventory at an artificial price within their own swap.
+        uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(oracle.twapTick(poolId, currentTick));
 
         // Since we have a positive amountSpecified, we can determine the maximum
         // amount that we can transact from our pool fees.
         if (_params.amountSpecified >= 0) {
             // Take the max value of either the pool fees or the amount specified to swap for
-            uint amountSpecified = (uint(_params.amountSpecified) > pendingPoolFees.amount1)
-                ? pendingPoolFees.amount1
-                : uint(_params.amountSpecified);
+            uint amountSpecified =
+                (uint(_params.amountSpecified) > pendingPoolFees.amount1) ? pendingPoolFees.amount1 : uint(_params.amountSpecified);
 
             // Capture the amount of desired token required at the current pool state to
-            // purchase the amount of token speicified, capped by the pool fees available.
-            (, ethIn_, tokenOut_, ) = SwapMath.computeSwapStep({
+            // purchase the amount of token specified, capped by the pool fees available.
+            //
+            // `SwapMath.computeSwapStep` infers the swap direction from
+            // `sqrtPriceCurrentX96 >= sqrtPriceTargetX96`. Because `sqrtPriceCurrentX96` is the
+            // TWAP (not spot), passing the user's raw `sqrtPriceLimitX96` as the target would let a
+            // TWAP that has diverged past that limit flip the inferred direction, swapping the
+            // native/memecoin roles of `(ethIn_, tokenOut_)` and underflowing `amount1` below. The
+            // pool's direction is already asserted above (`_nativeIsZero == _params.zeroForOne`),
+            // so pin the target to the matching price extreme, mirroring the exact-input branch.
+            (, ethIn_, tokenOut_,) = SwapMath.computeSwapStep({
                 sqrtPriceCurrentX96: sqrtPriceX96,
-                sqrtPriceTargetX96: _params.sqrtPriceLimitX96,
-                liquidity: _poolManager.getLiquidity(poolId),
+                sqrtPriceTargetX96: _nativeIsZero ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1,
+                liquidity: poolManager.getLiquidity(poolId),
                 amountRemaining: int(amountSpecified),
                 feePips: 0
             });
@@ -142,25 +194,29 @@ abstract contract InternalSwapPool {
             // To calculate the amount of tokens that we can receive, we first pass in the amount
             // of ETH that we are requesting to spend. We need to invert the `sqrtPriceTargetX96`
             // as our swap step computation is essentially calculating the opposite direction.
-            (, tokenOut_, ethIn_, ) = SwapMath.computeSwapStep({
+            (, tokenOut_, ethIn_,) = SwapMath.computeSwapStep({
                 sqrtPriceCurrentX96: sqrtPriceX96,
                 sqrtPriceTargetX96: _params.zeroForOne ? TickMath.MAX_SQRT_PRICE - 1 : TickMath.MIN_SQRT_PRICE + 1,
-                liquidity: _poolManager.getLiquidity(poolId),
+                liquidity: poolManager.getLiquidity(poolId),
                 amountRemaining: int(-_params.amountSpecified),
                 feePips: 0
             });
 
             // If we cannot fulfill the full amount of the internal orderbook, then we want to
-            // calculate the percentage of which we can utilize.
+            // calculate the percentage of which we can utilize. We use `FullMath.mulDiv` to
+            // perform the multiplication with overflow protection before the division.
             if (tokenOut_ > pendingPoolFees.amount1) {
-                ethIn_ = (pendingPoolFees.amount1 * ethIn_) / tokenOut_;
+                ethIn_ = FullMath.mulDiv(pendingPoolFees.amount1, ethIn_, tokenOut_);
                 tokenOut_ = pendingPoolFees.amount1;
             }
         }
 
-        // If nothing has happened, we can exit
-        if (ethIn_ == 0 && tokenOut_ == 0) {
-            return (ethIn_, tokenOut_);
+        // If either side rounded to zero (typically when the integer-division rescale clips
+        // `ethIn_` or when the available inventory is below `SwapMath` precision) we cannot
+        // perform a balanced settlement, so skip the internal fill entirely and let the
+        // outer pool swap absorb the full user input.
+        if (ethIn_ == 0 || tokenOut_ == 0) {
+            return (0, 0);
         }
 
         // Reduce the amount of fees that have been extracted from the pool and converted
@@ -168,13 +224,8 @@ abstract contract InternalSwapPool {
         pendingPoolFees.amount0 += ethIn_;
         pendingPoolFees.amount1 -= tokenOut_;
 
-        // Take the required ETH tokens from the {PoolManager} to settle the currency change. The
-        // `tokensOut_` are settled externally to this call.
-        _poolManager.take(!_nativeIsZero ? _key.currency1 : _key.currency0, address(this), ethIn_);
-        (!_nativeIsZero ? _key.currency0 : _key.currency1).settle(_poolManager, address(this), tokenOut_, false);
-
-        // Capture the swap cost that we captured from our drip
+        // Capture the swap cost that we captured from our drip. The caller performs the matching
+        // `take`/`settle` against the {PoolManager}.
         emit PoolFeesSwapped(poolId, _params.zeroForOne, ethIn_, tokenOut_);
     }
-
 }
