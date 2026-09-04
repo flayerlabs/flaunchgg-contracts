@@ -24,7 +24,47 @@ To start using the ƒlaunch protocol, please refer to our [documentation](https:
 For further assistance, feel free to reach out to our team through our official communication channels.
 
 ## Contracts
-### Flaunch Addresses
+### Flaunch Addresses — current generation (v1.3.3 hooks, v1.3.1 multi-asset managers)
+
+Live and byte-identical across all three chains. Base is release
+[v1.3.1](https://github.com/flayerlabs/flaunch-contracts/releases/tag/v1.3.1) (2026-08-20, multi-asset
+managers 2026-08-25); Robinhood Chain and Base Sepolia are the
+[v1.3.3](https://github.com/flayerlabs/flaunch-contracts/releases/tag/v1.3.3) hook regeneration
+(2026-09-03) on the same source, with the v1.3.1 manager generation deployed alongside. The
+hooks are CREATE3 deploys, so Robinhood and Base Sepolia share hook addresses; every other
+contract is chain-specific. The canonical machine-readable source is
+[`@flaunch/sdk`](https://www.npmjs.com/package/@flaunch/sdk) ≥ 0.11.4 (`*V1_3Address` maps).
+
+| Contract | Base (8453) | Robinhood (4663) | Base Sepolia (84532) |
+|---|---|---|---|
+| PositionManager (hook) | `0x588C683EcC450F8b2aAdb13D7f63792b840425DC` | `0x8D346f24278C5CD786309161aAC0fC2bbe4c25dc` | `0x8D346f24278C5CD786309161aAC0fC2bbe4c25dc` |
+| AnyPositionManager (hook) | `0x6eA0eDeE449A287504990Df8D87951B9436825Dc` | `0x9AbfbDc34A294De5210C0889f21D5Af54C4965DC` | `0x9AbfbDc34A294De5210C0889f21D5Af54C4965DC` |
+| Flaunch (ERC721) | `0x475a09618BfD00FA4CB03B8504e95b62075E6F7D` | `0x373c037C90a681079c3343ddAFCEEa8d9D8DE96E` | `0xC17a8523290ea839B4C1DdeF121D8736A06F5623` |
+| AnyFlaunch (ERC721) | `0x299c7E6992A4630D77A8cbd60AA78E17189E53F7` | `0x1bbbD15A6D5176edc7B42f2cc6cA800D9d74015D` | `0x2154c604df568A5285284D1c4918DC98C39240df` |
+| BidWall | `0x0dae90B70f62CE3b1D5278F4763BD1f595d6A687` | `0xB95ad380B6C2F39b67d8582Eb198ba3881Aa06D4` | `0xDedFD72f5E0555BD21e3C3d94297dEe2a435b366` |
+| AnyBidWall | `0x9D58CA8011096aD711baBF0d990c45b9D5bB047D` | `0xf32316145caf0A381FA587A7CE1bf850d58Af3aC` | `0x4c8A5C0Fe00448c5BBbd0D7AEc95C9eF3b81262b` |
+| FlaunchZap (factory-bound) | `0xf787d757674b21efD713fB636B16ed994bfa82A8` | `0x740f8278Fd9C548fF50b64805337eA8Ad24b2553` | `0x0c560537301396683C150EaDe42277a04b96e6d8` |
+| PairedTokenRegistry | `0x26958422636655b5a4eCE23a062e2EB61332c6da` | `0xC3F4E72DE4D37988F12C101b0766Fd8462F6Faf9` | `0x23cb441d18CA75c6a14964B06806dF668d45A1C6` |
+| FeeEscrow (multi-token) | `0x17fbF54d6D15EbFF82EEe77E616F701952D08Bb4` | `0x4Fb9dE6bbe970A49C19fB967F937351728C01b8f` | `0xF4AF7b459E971d9757C2100c626199C6C6334FCa` |
+| ReferralEscrow | `0xE86BFeBC4F094D36074833618779D279a9Af01Aa` | `0xB9827C0c7Cb61be4D58700B114E34D8448889eD8` | `0x7C6088C1185FbB770deB1CA7DdeeD4ba57659663` |
+| TokenImporter | `0xEa78C26690b5a0ddE2A5a8db7760B5dA79bfd76e` | `0xf7579C3cb8607F6CE00311465d28Ac45666f39Ad` | `0xc65fC67Fa953869dF97ab2DBa96fA58F2bDC9891` |
+| TreasuryManagerFactory | `0xB03Be6c735ef90189D6a22bBC8F6A45a33348fDe` | `0xE1eBcD62AEBd327A4c22dB9e68A8E81119a7eABF` | `0x98dfdd0AAc46c85FA35d67941d394019b7e3a18d` |
+| RevenueManager (implementation) | `0x908D692E628073A5B644Bc32B8dF57A5d1842288` | `0xFc28B339376018727eFcD45fdb257D0A0861A391` | `0x0cf6BdF0a85A9d6763361037985B76C8893553Af` |
+| AddressFeeSplitManager (implementation) | `0x7dC776cf57DacA91b315fe4F8803577dAb560ba5` | `0x7dc0f14204841e0314eB0265a0c420995F200243` | `0x7397390360Bd9D559D9277E60d47b99933791232` |
+| DynamicAddressFeeSplitManager (implementation) | `0xC4a0B79A0dB1F7F67da97E7F9A8867B6CaF017b2` | `0x1969bcF2779D53FeEA95480a7ab79f7cEfeE1681` | `0xD37aeE3eDebf59F149b5D3b29B6Ad2239F8A6B00` |
+| ERC721OwnerFeeSplitManager (implementation) | `0xDbFA9d3cab72EAE6Ba44ebC27175706aA451d9c0` | `0x51BdE7C1e2Ea54949C015F4f3ED3CAE185543C0b` | `0xcE84bdD578c60E98E79A3A05392010b443DdaA9e` |
+| StakingManager (implementation) | `0x72b9192017361eA00cDc1Cf1AC0F178cf89920cA` | `0xd992F465d55B005E8D2Aff9fcE977Cb78f5652e0` | `0x4D5616c04e59CE47b40e54c1D106363DA74c1a2E` |
+| GroupMapper | `0x4a68638179De37163d86B10e6B4b927CA1a0dE87` | `0xBdbF379f9EdFB5993FC00b41AAEfeE8475eAC0Ac` | `0x41964Dd84F25Cd5830F5c4deEb54eFab3eD7E087` |
+| FlaunchManagerZap | `0xD7E0c1D2B2a588cEC3b2Bdc9428FfE59b739749B` | `0xAf037090FF86EFdc8d4ba82728aC93042ad1EC73` | `0xF175A370Eb26Ea26C42caAEcD10EE723ed844C50` |
+| WhitelistedPermissions | `0xaCE028CB08A19C4d2a6e442516EbA7d114C09Af9` | `0xF772256B811D2241488d3d659E9cf797B387eFC3` | `0xBe6245B2C8d59618A080BD5B2d67B3c813a9AB7c` |
+
+Superseded hook generations still serve the coins launched on them (coins never migrate):
+Robinhood `0x588C683E…` / `0x6eA0eDeE…` (v1.3.1, 2026-08-21 → v1.3.3) and Base Sepolia
+`0x5558e727…` / `0x28118f40…` (`.vpt2`, 2026-08-06 → v1.3.3). Integrators resolving "which hook
+is this coin on" should consult `SupersededPositionManagerV1_3Address` alongside the current maps.
+
+### Flaunch Addresses — legacy generations (pre-v1.3, Base and Base Sepolia)
+
 | Contract              | Base                                         | Base Sepolia                                 |
 |-----------------------|----------------------------------------------|----------------------------------------------|
 | FeeExemptions         | `0xfdCE459071c74b732B2dEC579Afb38Ea552C4e06` | `0xD0aa3724074727629A9794d8A06CA1B2aDb51a85` |
@@ -49,11 +89,14 @@ For further assistance, feel free to reach out to our team through our official 
 | Contract              | Base                                         | Base Sepolia                                 |
 |-----------------------|----------------------------------------------|----------------------------------------------|
 | flETH                 | `0x000000000d564d5be76f7f0d28fe52605afc7cf8` | `0x79FC52701cD4BE6f9Ba9aDC94c207DE37e3314eb` |
+| flETH (Robinhood Chain, 4663; WETH-backed vault, `deposit(uint256) payable`) | `0x00000000043C1117DAFA3A3D0C7148Eb48B30130` | — |
 | FlAaveV3WethGateway   | `0x344e4d19c851b317bb65d31bb5c4e3815b53d727` | `0xed5fEec571D132AeA6D6a636c683b818b3442888` |
 | AaveV3Strategy        | `0xd93855bab40a80df2f8ccaae079f2b73d5ec8527` | `0xd5f7Fe1954C5c772Dd562CbcF1e26a6D75Bc0351` |
 | flETHHooks            | `0x9e433f32bb5481a9ca7dff5b3af74a7ed041a888` | `0x4bd2ca15286c96e4e731337de8b375da6841e888` |
 
 ### Uniswap V4 Addresses
+
+Robinhood Chain (4663): PoolManager `0x8366a39CC670B4001A1121B8F6A443A643e40951`, PositionManager `0x58daec3116aae6D93017bAAea7749052E8a04fA7`, Quoter `0x8Dc178eFB8111BB0973Dd9d722ebeFF267c98F94`, StateView `0xF3334192D15450CdD385c8B70e03f9A6bD9E673b`, UniversalRouter `0x8876789976dEcBfCbBbe364623C63652db8C0904`, Permit2 `0x000000000022D473030F116dDEE9F6B43aC78BA3`.
 | Contract              | Base                                         | Base Sepolia                                 |
 |-----------------------|----------------------------------------------|----------------------------------------------|
 | PoolManager           | `0x498581fF718922c3f8e6A244956aF099B2652b2b` | `0x05E73354cFDd6745C338b50BcFDfA3Aa6fA03408` |
