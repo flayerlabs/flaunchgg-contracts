@@ -7,6 +7,11 @@
           "name": "_baseURI",
           "type": "string",
           "internalType": "string"
+        },
+        {
+          "name": "_owner",
+          "type": "address",
+          "internalType": "address"
         }
       ],
       "stateMutability": "nonpayable"
@@ -41,6 +46,43 @@
       ],
       "outputs": [],
       "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "approveDeployer",
+      "inputs": [
+        {
+          "name": "_deployer",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_isApproved",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "approvedDeployer",
+      "inputs": [
+        {
+          "name": "_deployer",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "_isApproved",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
     },
     {
       "type": "function",
@@ -128,6 +170,40 @@
     },
     {
       "type": "function",
+      "name": "deployMemecoin",
+      "inputs": [
+        {
+          "name": "name_",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "symbol_",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "tokenUri_",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "_supplyRecipient",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "memecoin_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
       "name": "flaunch",
       "inputs": [
         {
@@ -159,6 +235,11 @@
               "name": "feeCalculatorParams",
               "type": "bytes",
               "internalType": "bytes"
+            },
+            {
+              "name": "pairedToken",
+              "type": "address",
+              "internalType": "address"
             }
           ]
         }
@@ -259,6 +340,19 @@
     },
     {
       "type": "function",
+      "name": "memecoinImplementation",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "memecoinTreasury",
       "inputs": [
         {
@@ -317,6 +411,19 @@
           "name": "",
           "type": "string",
           "internalType": "string"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "nextMemecoinNonce",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
       "stateMutability": "view"
@@ -515,6 +622,42 @@
     },
     {
       "type": "function",
+      "name": "setMemecoinImplementation",
+      "inputs": [
+        {
+          "name": "_memecoinImplementation",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setMemecoinMetadata",
+      "inputs": [
+        {
+          "name": "_memecoin",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "name_",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "symbol_",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
       "name": "setMemecoinTreasuryImplementation",
       "inputs": [
         {
@@ -697,6 +840,25 @@
     },
     {
       "type": "event",
+      "name": "DeployerApproved",
+      "inputs": [
+        {
+          "name": "_deployer",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "_isApproved",
+          "type": "bool",
+          "indexed": false,
+          "internalType": "bool"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
       "name": "Initialized",
       "inputs": [
         {
@@ -704,6 +866,44 @@
           "type": "uint64",
           "indexed": false,
           "internalType": "uint64"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "MemecoinDeployed",
+      "inputs": [
+        {
+          "name": "_memecoin",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "_deployer",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "_supplyRecipient",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "MemecoinImplementationUpdated",
+      "inputs": [
+        {
+          "name": "_newImplementation",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
         }
       ],
       "anonymous": false
@@ -813,6 +1013,11 @@
     },
     {
       "type": "error",
+      "name": "CallerIsNotApprovedDeployer",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "CallerIsNotPositionManager",
       "inputs": []
     },
@@ -835,6 +1040,11 @@
     {
       "type": "error",
       "name": "InvalidInitialization",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "MemecoinImplementationNotSet",
       "inputs": []
     },
     {

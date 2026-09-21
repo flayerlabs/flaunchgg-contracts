@@ -4,7 +4,7 @@
       "type": "constructor",
       "inputs": [
         {
-          "name": "_escrowToken",
+          "name": "_pairedTokenRegistry",
           "type": "address",
           "internalType": "address"
         },
@@ -30,6 +30,11 @@
           "internalType": "PoolId"
         },
         {
+          "name": "_token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
           "name": "_recipient",
           "type": "address",
           "internalType": "address"
@@ -49,6 +54,11 @@
       "inputs": [
         {
           "name": "_recipient",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_token",
           "type": "address",
           "internalType": "address"
         }
@@ -81,19 +91,6 @@
       ],
       "outputs": [],
       "stateMutability": "payable"
-    },
-    {
-      "type": "function",
-      "name": "escrowToken",
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "",
-          "type": "address",
-          "internalType": "address"
-        }
-      ],
-      "stateMutability": "view"
     },
     {
       "type": "function",
@@ -182,25 +179,17 @@
     },
     {
       "type": "function",
-      "name": "setPairedTokenRegistry",
-      "inputs": [
-        {
-          "name": "_pairedTokenRegistry",
-          "type": "address",
-          "internalType": "address"
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
       "name": "totalFeesAllocated",
       "inputs": [
         {
           "name": "_poolId",
           "type": "bytes32",
           "internalType": "PoolId"
+        },
+        {
+          "name": "_token",
+          "type": "address",
+          "internalType": "address"
         }
       ],
       "outputs": [
@@ -229,6 +218,34 @@
       "type": "function",
       "name": "withdrawFees",
       "inputs": [
+        {
+          "name": "_token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_recipient",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_unwrap",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "withdrawFees",
+      "inputs": [
+        {
+          "name": "_tokens",
+          "type": "address[]",
+          "internalType": "address[]"
+        },
         {
           "name": "_recipient",
           "type": "address",
@@ -342,6 +359,12 @@
           "internalType": "address"
         },
         {
+          "name": "_deliveredAsset",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
           "name": "_amount",
           "type": "uint256",
           "indexed": false,
@@ -362,7 +385,12 @@
     },
     {
       "type": "error",
-      "name": "InvalidRecipient",
+      "name": "IndexerZeroAddress",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InsufficientNativeValue",
       "inputs": []
     },
     {
@@ -377,12 +405,12 @@
     },
     {
       "type": "error",
-      "name": "PoolIdNotIndexed",
+      "name": "RecipientZeroAddress",
       "inputs": []
     },
     {
       "type": "error",
-      "name": "RecipientZeroAddress",
+      "name": "RegistryZeroAddress",
       "inputs": []
     },
     {

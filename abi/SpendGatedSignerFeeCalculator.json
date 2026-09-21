@@ -2,7 +2,13 @@
   "abi": [
     {
       "type": "constructor",
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "_admin",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
       "stateMutability": "nonpayable"
     },
     {
@@ -14,6 +20,32 @@
           "name": "",
           "type": "bytes32",
           "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "GATE_PARAMS_TAG",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "MAX_GATE_DURATION",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
       "stateMutability": "view"
@@ -33,50 +65,29 @@
     },
     {
       "type": "function",
+      "name": "approvedRouters",
+      "inputs": [
+        {
+          "name": "_router",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "_approved",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "cancelOwnershipHandover",
       "inputs": [],
       "outputs": [],
       "stateMutability": "payable"
-    },
-    {
-      "type": "function",
-      "name": "clearTrustedPoolKeySigner",
-      "inputs": [
-        {
-          "name": "_poolKey",
-          "type": "tuple",
-          "internalType": "struct PoolKey",
-          "components": [
-            {
-              "name": "currency0",
-              "type": "address",
-              "internalType": "Currency"
-            },
-            {
-              "name": "currency1",
-              "type": "address",
-              "internalType": "Currency"
-            },
-            {
-              "name": "fee",
-              "type": "uint24",
-              "internalType": "uint24"
-            },
-            {
-              "name": "tickSpacing",
-              "type": "int24",
-              "internalType": "int24"
-            },
-            {
-              "name": "hooks",
-              "type": "address",
-              "internalType": "contract IHooks"
-            }
-          ]
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
     },
     {
       "type": "function",
@@ -209,7 +220,7 @@
     },
     {
       "type": "function",
-      "name": "fairLaunchSettings",
+      "name": "gateConfigured",
       "inputs": [
         {
           "name": "_poolId",
@@ -219,19 +230,9 @@
       ],
       "outputs": [
         {
-          "name": "enabled",
+          "name": "_configured",
           "type": "bool",
           "internalType": "bool"
-        },
-        {
-          "name": "walletCap",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "txCap",
-          "type": "uint256",
-          "internalType": "uint256"
         }
       ],
       "stateMutability": "view"
@@ -299,7 +300,7 @@
     },
     {
       "type": "function",
-      "name": "hashFairLaunchAuthorization",
+      "name": "hashSpendAuthorization",
       "inputs": [
         {
           "name": "_buyer",
@@ -315,32 +316,18 @@
           "name": "_deadline",
           "type": "uint256",
           "internalType": "uint256"
+        },
+        {
+          "name": "_spendCeilingWei",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
       "outputs": [
         {
-          "name": "",
+          "name": "digest_",
           "type": "bytes32",
           "internalType": "bytes32"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "isAuthorizationUsed",
-      "inputs": [
-        {
-          "name": "_digest",
-          "type": "bytes32",
-          "internalType": "bytes32"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "",
-          "type": "bool",
-          "internalType": "bool"
         }
       ],
       "stateMutability": "view"
@@ -360,35 +347,6 @@
           "name": "valid_",
           "type": "bool",
           "internalType": "bool"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "maxTokensOut",
-      "inputs": [
-        {
-          "name": "_poolId",
-          "type": "bytes32",
-          "internalType": "PoolId"
-        },
-        {
-          "name": "_origin",
-          "type": "address",
-          "internalType": "address"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "hasCap_",
-          "type": "bool",
-          "internalType": "bool"
-        },
-        {
-          "name": "maxTokensOut_",
-          "type": "uint256",
-          "internalType": "uint256"
         }
       ],
       "stateMutability": "view"
@@ -490,6 +448,24 @@
     },
     {
       "type": "function",
+      "name": "setApprovedRouter",
+      "inputs": [
+        {
+          "name": "_router",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_approved",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
       "name": "setFlaunchParams",
       "inputs": [
         {
@@ -553,6 +529,40 @@
     },
     {
       "type": "function",
+      "name": "spendGateSettings",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "internalType": "PoolId"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "enabled",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "walletCapWei",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "settler",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "endsAt",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "supportsInterface",
       "inputs": [
         {
@@ -575,7 +585,7 @@
       "name": "trackSwap",
       "inputs": [
         {
-          "name": "",
+          "name": "_sender",
           "type": "address",
           "internalType": "address"
         },
@@ -634,7 +644,7 @@
           ]
         },
         {
-          "name": "",
+          "name": "_delta",
           "type": "int256",
           "internalType": "BalanceDelta"
         },
@@ -686,7 +696,7 @@
     },
     {
       "type": "function",
-      "name": "walletPurchasedAmount",
+      "name": "walletSpentWei",
       "inputs": [
         {
           "name": "_poolId",
@@ -707,6 +717,25 @@
         }
       ],
       "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "ApprovedRouterUpdated",
+      "inputs": [
+        {
+          "name": "_router",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "_approved",
+          "type": "bool",
+          "indexed": false,
+          "internalType": "bool"
+        }
+      ],
+      "anonymous": false
     },
     {
       "type": "event",
@@ -761,7 +790,7 @@
     },
     {
       "type": "event",
-      "name": "PoolKeyAccessUpdated",
+      "name": "PoolGateUpdated",
       "inputs": [
         {
           "name": "_poolId",
@@ -773,7 +802,7 @@
           "name": "_settings",
           "type": "tuple",
           "indexed": false,
-          "internalType": "struct ITrustedSignerFeeCalculator.FairLaunchSettings",
+          "internalType": "struct ISpendGatedSignerFeeCalculator.SpendGateSettings",
           "components": [
             {
               "name": "enabled",
@@ -781,12 +810,17 @@
               "internalType": "bool"
             },
             {
-              "name": "walletCap",
+              "name": "walletCapWei",
               "type": "uint256",
               "internalType": "uint256"
             },
             {
-              "name": "txCap",
+              "name": "settler",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "endsAt",
               "type": "uint256",
               "internalType": "uint256"
             }
@@ -891,6 +925,31 @@
     },
     {
       "type": "event",
+      "name": "SpendRecorded",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "PoolId"
+        },
+        {
+          "name": "_buyer",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "_ethSpent",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
       "name": "TrustedSignerUpdated",
       "inputs": [
         {
@@ -936,7 +995,7 @@
     },
     {
       "type": "error",
-      "name": "BuyerNotTransactionOrigin",
+      "name": "BuyerNotSubmitter",
       "inputs": [
         {
           "name": "_buyer",
@@ -947,6 +1006,11 @@
           "name": "_txOrigin",
           "type": "address",
           "internalType": "address"
+        },
+        {
+          "name": "_sender",
+          "type": "address",
+          "internalType": "address"
         }
       ]
     },
@@ -954,6 +1018,22 @@
       "type": "error",
       "name": "CallerNotPositionManager",
       "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "CeilingExceeded",
+      "inputs": [
+        {
+          "name": "_walletSpent",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "_spendCeilingWei",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
     },
     {
       "type": "error",
@@ -968,8 +1048,62 @@
     },
     {
       "type": "error",
+      "name": "ExactOutputNotSupported",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "GateAlreadyConfigured",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "internalType": "PoolId"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "GateExpiryRequired",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "internalType": "PoolId"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "GateExpiryTooDistant",
+      "inputs": [
+        {
+          "name": "_endsAt",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "_latestPermitted",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "InvalidPoolKey",
       "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidRouter",
+      "inputs": [
+        {
+          "name": "_router",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
     },
     {
       "type": "error",
@@ -999,13 +1133,19 @@
     },
     {
       "type": "error",
-      "name": "NoPoolKeySignerNominated",
-      "inputs": []
-    },
-    {
-      "type": "error",
-      "name": "NotPoolCreator",
-      "inputs": []
+      "name": "NotSettler",
+      "inputs": [
+        {
+          "name": "_caller",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_settler",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
     },
     {
       "type": "error",
@@ -1014,8 +1154,25 @@
     },
     {
       "type": "error",
-      "name": "SignatureAlreadyUsed",
-      "inputs": []
+      "name": "SellsClosedUntilGateEnds",
+      "inputs": [
+        {
+          "name": "_endsAt",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "SettlerRequired",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "internalType": "PoolId"
+        }
+      ]
     },
     {
       "type": "error",
@@ -1052,15 +1209,15 @@
     },
     {
       "type": "error",
-      "name": "TransactionCapExceeded",
+      "name": "Unauthorized",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "UnrecognisedGateParams",
       "inputs": [
         {
-          "name": "_requestedAmount",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "_maxTokensOut",
+          "name": "_length",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -1068,8 +1225,19 @@
     },
     {
       "type": "error",
-      "name": "Unauthorized",
-      "inputs": []
+      "name": "WalletCapExceeded",
+      "inputs": [
+        {
+          "name": "_walletSpent",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "_walletCapWei",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
     }
   ]
 }

@@ -9,11 +9,6 @@
           "internalType": "struct IPositionManager.ConstructorParams",
           "components": [
             {
-              "name": "flETH",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
               "name": "poolManager",
               "type": "address",
               "internalType": "contract IPoolManager"
@@ -62,11 +57,6 @@
             },
             {
               "name": "flayGovernance",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
-              "name": "feeEscrow",
               "type": "address",
               "internalType": "address"
             },
@@ -1010,6 +1000,25 @@
     },
     {
       "type": "function",
+      "name": "creatorFee",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "internalType": "PoolId"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "_creatorFee",
+          "type": "uint24",
+          "internalType": "uint24"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "feeCalculator",
       "inputs": [],
       "outputs": [
@@ -1017,19 +1026,6 @@
           "name": "",
           "type": "address",
           "internalType": "contract IFeeCalculator"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "feeEscrow",
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "",
-          "type": "address",
-          "internalType": "contract FeeEscrow"
         }
       ],
       "stateMutability": "view"
@@ -1077,19 +1073,6 @@
           "name": "protocol_",
           "type": "uint256",
           "internalType": "uint256"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "flETH",
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "",
-          "type": "address",
-          "internalType": "address"
         }
       ],
       "stateMutability": "view"
@@ -1154,6 +1137,82 @@
               "internalType": "address"
             }
           ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "memecoin_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "flaunch",
+      "inputs": [
+        {
+          "name": "_params",
+          "type": "tuple",
+          "internalType": "struct IPositionManager.FlaunchParams",
+          "components": [
+            {
+              "name": "name",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "symbol",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "tokenUri",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "premineAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "creator",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "creatorFeeAllocation",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "flaunchAt",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "initialPriceParams",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "feeCalculatorParams",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "pairedToken",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        },
+        {
+          "name": "_maxPremineCost",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
       "outputs": [
@@ -1950,80 +2009,6 @@
     },
     {
       "type": "event",
-      "name": "HookFee",
-      "inputs": [
-        {
-          "name": "id",
-          "type": "bytes32",
-          "indexed": true,
-          "internalType": "bytes32"
-        },
-        {
-          "name": "sender",
-          "type": "address",
-          "indexed": true,
-          "internalType": "address"
-        },
-        {
-          "name": "feeAmount0",
-          "type": "uint128",
-          "indexed": false,
-          "internalType": "uint128"
-        },
-        {
-          "name": "feeAmount1",
-          "type": "uint128",
-          "indexed": false,
-          "internalType": "uint128"
-        }
-      ],
-      "anonymous": false
-    },
-    {
-      "type": "event",
-      "name": "HookSwap",
-      "inputs": [
-        {
-          "name": "id",
-          "type": "bytes32",
-          "indexed": true,
-          "internalType": "bytes32"
-        },
-        {
-          "name": "sender",
-          "type": "address",
-          "indexed": true,
-          "internalType": "address"
-        },
-        {
-          "name": "amount0",
-          "type": "int128",
-          "indexed": false,
-          "internalType": "int128"
-        },
-        {
-          "name": "amount1",
-          "type": "int128",
-          "indexed": false,
-          "internalType": "int128"
-        },
-        {
-          "name": "hookLPfeeAmount0",
-          "type": "uint128",
-          "indexed": false,
-          "internalType": "uint128"
-        },
-        {
-          "name": "hookLPfeeAmount1",
-          "type": "uint128",
-          "indexed": false,
-          "internalType": "uint128"
-        }
-      ],
-      "anonymous": false
-    },
-    {
-      "type": "event",
       "name": "InitialPriceUpdated",
       "inputs": [
         {
@@ -2574,6 +2559,17 @@
     },
     {
       "type": "error",
+      "name": "NativePayerMustBeSelf",
+      "inputs": [
+        {
+          "name": "_payer",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "NewOwnerIsZeroAddress",
       "inputs": []
     },
@@ -2605,6 +2601,22 @@
     },
     {
       "type": "error",
+      "name": "PremineCostExceedsMaximum",
+      "inputs": [
+        {
+          "name": "_cost",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "_maximum",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "PremineExceedsInitialAmount",
       "inputs": [
         {
@@ -2622,11 +2634,6 @@
     {
       "type": "error",
       "name": "ProtocolFeeInvalid",
-      "inputs": []
-    },
-    {
-      "type": "error",
-      "name": "RecipientZeroAddress",
       "inputs": []
     },
     {
@@ -2674,6 +2681,17 @@
           "name": "_poolId",
           "type": "bytes32",
           "internalType": "PoolId"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "UnsupportedLaunchTick",
+      "inputs": [
+        {
+          "name": "_initialTick",
+          "type": "int24",
+          "internalType": "int24"
         }
       ]
     }

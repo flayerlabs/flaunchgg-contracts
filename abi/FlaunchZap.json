@@ -27,6 +27,19 @@
     },
     {
       "type": "function",
+      "name": "PREMINE_PRICE_IMPACT_BUFFER",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "calculateFee",
       "inputs": [
         {
@@ -553,6 +566,19 @@
     },
     {
       "type": "function",
+      "name": "pairedTokenRegistry",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "contract IPairedTokenRegistry"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "positionManager",
       "inputs": [],
       "outputs": [
@@ -585,6 +611,11 @@
     {
       "type": "error",
       "name": "Erc20PremineRequiresMaxCost",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InsufficientNativeValue",
       "inputs": []
     },
     {

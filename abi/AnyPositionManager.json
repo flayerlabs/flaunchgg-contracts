@@ -9,11 +9,6 @@
           "internalType": "struct IAnyPositionManager.ConstructorParams",
           "components": [
             {
-              "name": "flETH",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
               "name": "poolManager",
               "type": "address",
               "internalType": "contract IPoolManager"
@@ -66,11 +61,6 @@
               "internalType": "address"
             },
             {
-              "name": "feeEscrow",
-              "type": "address",
-              "internalType": "address"
-            },
-            {
               "name": "feeExemptions",
               "type": "address",
               "internalType": "contract IFeeExemptions"
@@ -94,6 +84,11 @@
               "name": "oracle",
               "type": "address",
               "internalType": "contract IOracle"
+            },
+            {
+              "name": "pairedTokenRegistry",
+              "type": "address",
+              "internalType": "contract IPairedTokenRegistry"
             }
           ]
         }
@@ -1042,6 +1037,25 @@
     },
     {
       "type": "function",
+      "name": "creatorFee",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "internalType": "PoolId"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "_creatorFee",
+          "type": "uint24",
+          "internalType": "uint24"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "feeCalculator",
       "inputs": [],
       "outputs": [
@@ -1049,19 +1063,6 @@
           "name": "",
           "type": "address",
           "internalType": "contract IFeeCalculator"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "feeEscrow",
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "",
-          "type": "address",
-          "internalType": "contract FeeEscrow"
         }
       ],
       "stateMutability": "view"
@@ -1115,19 +1116,6 @@
     },
     {
       "type": "function",
-      "name": "flETH",
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "",
-          "type": "address",
-          "internalType": "address"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
       "name": "flaunch",
       "inputs": [
         {
@@ -1159,6 +1147,11 @@
               "name": "feeCalculatorParams",
               "type": "bytes",
               "internalType": "bytes"
+            },
+            {
+              "name": "pairedToken",
+              "type": "address",
+              "internalType": "address"
             }
           ]
         }
@@ -1175,6 +1168,103 @@
           "name": "",
           "type": "address",
           "internalType": "contract IAnyFlaunch"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "flaunchWithLiquidity",
+      "inputs": [
+        {
+          "name": "_params",
+          "type": "tuple",
+          "internalType": "struct IAnyPositionManager.FlaunchParams",
+          "components": [
+            {
+              "name": "memecoin",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "creator",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "creatorFeeAllocation",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "initialPriceParams",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "feeCalculatorParams",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "pairedToken",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        },
+        {
+          "name": "_liquidityParams",
+          "type": "tuple",
+          "internalType": "struct IAnyPositionManager.LiquidityParams",
+          "components": [
+            {
+              "name": "seedAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "premineAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "maxPremineCost",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "flaunchAt",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "ethSpent_",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "flaunchesAt",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "internalType": "PoolId"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "_flaunchTime",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
       "stateMutability": "view"
@@ -1417,6 +1507,76 @@
           "name": "result",
           "type": "uint256",
           "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pairedToken",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "internalType": "PoolId"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "pairedToken_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pairedTokenBidWallThreshold",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "internalType": "PoolId"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "threshold_",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pairedTokenFeeEscrow",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "internalType": "PoolId"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "escrow_",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pairedTokenRegistry",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "contract IPairedTokenRegistry"
         }
       ],
       "stateMutability": "view"
@@ -1979,6 +2139,11 @@
               "name": "feeCalculatorParams",
               "type": "bytes",
               "internalType": "bytes"
+            },
+            {
+              "name": "pairedToken",
+              "type": "address",
+              "internalType": "address"
             }
           ]
         }
@@ -2062,6 +2227,25 @@
         },
         {
           "name": "_protocolAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "PoolScheduled",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "PoolId"
+        },
+        {
+          "name": "_flaunchesAt",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
@@ -2295,6 +2479,28 @@
     },
     {
       "type": "error",
+      "name": "MissingPairedTokenEscrow",
+      "inputs": [
+        {
+          "name": "_token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "NativePayerMustBeSelf",
+      "inputs": [
+        {
+          "name": "_payer",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "NewOwnerIsZeroAddress",
       "inputs": []
     },
@@ -2310,12 +2516,39 @@
     },
     {
       "type": "error",
-      "name": "ProtocolFeeInvalid",
+      "name": "PairedTokenIsMemecoin",
       "inputs": []
     },
     {
       "type": "error",
-      "name": "RecipientZeroAddress",
+      "name": "PairedTokenNotApproved",
+      "inputs": [
+        {
+          "name": "_token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "PremineExceedsSeedAmount",
+      "inputs": [
+        {
+          "name": "_premineAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "_seedAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProtocolFeeInvalid",
       "inputs": []
     },
     {
@@ -2327,6 +2560,17 @@
       "type": "error",
       "name": "SwapFeeInvalid",
       "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TokenNotFlaunched",
+      "inputs": [
+        {
+          "name": "_flaunchesAt",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
     },
     {
       "type": "error",

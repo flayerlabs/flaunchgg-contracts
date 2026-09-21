@@ -246,11 +246,6 @@
     },
     {
       "type": "error",
-      "name": "NativeTreasuryActionUnsupported",
-      "inputs": []
-    },
-    {
-      "type": "error",
       "name": "NotInitializing",
       "inputs": []
     },
@@ -262,6 +257,11 @@
     {
       "type": "error",
       "name": "Unauthorized",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "UnreturnedNativeValue",
       "inputs": []
     }
   ]
