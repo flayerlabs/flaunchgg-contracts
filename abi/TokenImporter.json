@@ -72,7 +72,7 @@
     },
     {
       "type": "function",
-      "name": "initialize",
+      "name": "initializeImport",
       "inputs": [
         {
           "name": "_memecoin",
@@ -90,7 +90,7 @@
           "internalType": "uint256"
         },
         {
-          "name": "_verifier",
+          "name": "_pairedToken",
           "type": "address",
           "internalType": "address"
         }
@@ -100,7 +100,7 @@
     },
     {
       "type": "function",
-      "name": "initialize",
+      "name": "initializeImport",
       "inputs": [
         {
           "name": "_memecoin",
@@ -126,6 +126,11 @@
           "name": "_verifier",
           "type": "address",
           "internalType": "address"
+        },
+        {
+          "name": "_pairedToken",
+          "type": "address",
+          "internalType": "address"
         }
       ],
       "outputs": [],
@@ -133,7 +138,7 @@
     },
     {
       "type": "function",
-      "name": "initialize",
+      "name": "initializeImport",
       "inputs": [
         {
           "name": "_memecoin",
@@ -149,6 +154,16 @@
           "name": "_initialMarketCap",
           "type": "uint256",
           "internalType": "uint256"
+        },
+        {
+          "name": "_verifier",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_pairedToken",
+          "type": "address",
+          "internalType": "address"
         }
       ],
       "outputs": [],

@@ -51,6 +51,11 @@
               "internalType": "address"
             },
             {
+              "name": "priceCalculator",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
               "name": "minDistribute",
               "type": "uint256",
               "internalType": "uint256"
@@ -153,6 +158,24 @@
     },
     {
       "type": "function",
+      "name": "setPriceCalculator",
+      "inputs": [
+        {
+          "name": "_token",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_priceCalculator",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
       "name": "tokenConfig",
       "inputs": [
         {
@@ -189,6 +212,11 @@
             },
             {
               "name": "feeEscrow",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "priceCalculator",
               "type": "address",
               "internalType": "address"
             },
@@ -320,6 +348,11 @@
               "internalType": "address"
             },
             {
+              "name": "priceCalculator",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
               "name": "minDistribute",
               "type": "uint256",
               "internalType": "uint256"
@@ -348,13 +381,32 @@
       "anonymous": false
     },
     {
+      "type": "event",
+      "name": "PriceCalculatorUpdated",
+      "inputs": [
+        {
+          "name": "_token",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "_priceCalculator",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
       "type": "error",
       "name": "AlreadyInitialized",
       "inputs": []
     },
     {
       "type": "error",
-      "name": "FeeEscrowTokenMismatch",
+      "name": "FeeEscrowRegistryMismatch",
       "inputs": []
     },
     {
@@ -369,6 +421,11 @@
     },
     {
       "type": "error",
+      "name": "MissingPriceCalculator",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "NewOwnerIsZeroAddress",
       "inputs": []
     },
@@ -379,18 +436,27 @@
     },
     {
       "type": "error",
-      "name": "PairedTokenNotApproved",
-      "inputs": [
-        {
-          "name": "_token",
-          "type": "address",
-          "internalType": "address"
-        }
-      ]
+      "name": "PairedTokenDecimalsMismatch",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PairedTokenUnderlyingMismatch",
+      "inputs": []
     },
     {
       "type": "error",
       "name": "PairedTokenZeroAddress",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PriceCalculatorNotLive",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PriceCalculatorTokenMismatch",
       "inputs": []
     },
     {

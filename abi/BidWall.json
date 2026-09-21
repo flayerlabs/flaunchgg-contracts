@@ -4,11 +4,6 @@
       "type": "constructor",
       "inputs": [
         {
-          "name": "_flETH",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
           "name": "_poolManager",
           "type": "address",
           "internalType": "address"
@@ -205,19 +200,6 @@
     },
     {
       "type": "function",
-      "name": "flETH",
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "",
-          "type": "address",
-          "internalType": "address"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
       "name": "getRoleAdmin",
       "inputs": [
         {
@@ -349,19 +331,6 @@
     },
     {
       "type": "function",
-      "name": "pairedTokenRegistry",
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "",
-          "type": "address",
-          "internalType": "contract IPairedTokenRegistry"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
       "name": "poolInfo",
       "inputs": [
         {
@@ -480,6 +449,65 @@
     },
     {
       "type": "function",
+      "name": "retainedMemecoin",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "internalType": "PoolId"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "_amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "retryRetainedMemecoin",
+      "inputs": [
+        {
+          "name": "_key",
+          "type": "tuple",
+          "internalType": "struct PoolKey",
+          "components": [
+            {
+              "name": "currency0",
+              "type": "address",
+              "internalType": "Currency"
+            },
+            {
+              "name": "currency1",
+              "type": "address",
+              "internalType": "Currency"
+            },
+            {
+              "name": "fee",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "tickSpacing",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "hooks",
+              "type": "address",
+              "internalType": "contract IHooks"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
       "name": "revokeRole",
       "inputs": [
         {
@@ -536,19 +564,6 @@
           "name": "_disable",
           "type": "bool",
           "internalType": "bool"
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
-      "name": "setPairedTokenRegistry",
-      "inputs": [
-        {
-          "name": "_pairedTokenRegistry",
-          "type": "address",
-          "internalType": "address"
         }
       ],
       "outputs": [],
@@ -696,7 +711,7 @@
     },
     {
       "type": "event",
-      "name": "BidWallInitialized",
+      "name": "BidWallRepositionDeferred",
       "inputs": [
         {
           "name": "_poolId",
@@ -705,19 +720,13 @@
           "internalType": "PoolId"
         },
         {
-          "name": "_eth",
+          "name": "_pendingETHFees",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
         },
         {
-          "name": "_tickLower",
-          "type": "int24",
-          "indexed": false,
-          "internalType": "int24"
-        },
-        {
-          "name": "_tickUpper",
+          "name": "_currentTick",
           "type": "int24",
           "indexed": false,
           "internalType": "int24"
@@ -752,6 +761,31 @@
           "type": "int24",
           "indexed": false,
           "internalType": "int24"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "BidWallRewardsRetained",
+      "inputs": [
+        {
+          "name": "_poolId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "PoolId"
+        },
+        {
+          "name": "_recipient",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "_tokens",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
         }
       ],
       "anonymous": false
@@ -965,12 +999,33 @@
     },
     {
       "type": "error",
+      "name": "InsufficientNativeValue",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NativePayerMustBeSelf",
+      "inputs": [
+        {
+          "name": "_payer",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "NewOwnerIsZeroAddress",
       "inputs": []
     },
     {
       "type": "error",
       "name": "NoHandoverRequest",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NoRetainedMemecoin",
       "inputs": []
     },
     {
